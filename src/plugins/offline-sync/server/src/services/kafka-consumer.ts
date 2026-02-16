@@ -99,6 +99,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           ? 'master-consumer'
           : `ship-${config.shipId}-consumer`;
 
+        strapi.log.info(`[Kafka] Connecting consumer to brokers: ${config.kafka.brokers.join(', ')}`);
         kafka = new Kafka({
           clientId,
           brokers: config.kafka.brokers,

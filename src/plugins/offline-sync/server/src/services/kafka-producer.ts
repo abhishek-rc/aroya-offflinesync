@@ -46,6 +46,7 @@ export default ({ strapi }: { strapi: any }) => {
         isConnected = false;
 
         // Create fresh Kafka instance
+        strapi.log.info(`[Kafka] Connecting producer to brokers: ${config.kafka.brokers.join(', ')}`);
         kafka = new Kafka({
           clientId,
           brokers: config.kafka.brokers,
