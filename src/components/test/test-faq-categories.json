@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_test_test_faq_categories",
+  "info": {
+    "displayName": "Test Faq Categories"
+  },
+  "options": {},
+  "attributes": {
+    "category_heading": {
+      "type": "string"
+    },
+    "test_faq_item": {
+      "type": "component",
+      "component": "test.test-faq-item",
+      "repeatable": true
+    },
+    "test_media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  },
+  "config": {}
+}

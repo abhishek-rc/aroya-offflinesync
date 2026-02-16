@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_shared_feature_sections",
+  "info": {
+    "displayName": "Feature Section"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "richtext"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "tab_items": {
+      "type": "component",
+      "component": "tab.tab-item",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

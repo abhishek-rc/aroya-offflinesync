@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_information_infos",
+  "info": {
+    "displayName": "info"
+  },
+  "options": {},
+  "attributes": {
+    "info": {
+      "type": "component",
+      "component": "shared.info-section",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

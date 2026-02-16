@@ -1,0 +1,72 @@
+{
+  "collectionName": "components_cabin_cabin_blocks",
+  "info": {
+    "displayName": "Cabin Type Detail"
+  },
+  "options": {},
+  "attributes": {
+    "ship": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "AC01"
+      ]
+    },
+    "code": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "RV",
+        "PV",
+        "SGS",
+        "PFS",
+        "GS",
+        "PS",
+        "SS",
+        "SSA",
+        "DS",
+        "JS",
+        "SES",
+        "IDC",
+        "BSCA",
+        "BCA",
+        "BSC",
+        "BC",
+        "SCA",
+        "SSC",
+        "SC",
+        "ISCA",
+        "IC"
+      ]
+    },
+    "description": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "Royal Villa",
+        "Presidential Villa",
+        "Signature Suite",
+        "Premier Family Suite",
+        "Grand Suite",
+        "Premier Suite",
+        "Superior Suite",
+        "Superior Suite (ADA)",
+        "Deluxe Suite",
+        "Junior Suite",
+        "Seaview Suite",
+        "Interior Deluxe Cabin",
+        "Balcony Superior Cabin (ADA)",
+        "Balcony Cabin (ADA)",
+        "Balcony Superior Cabin",
+        "Balcony Cabin",
+        "Seaview Cabin (ADA)",
+        "Seaview Cabin",
+        "Interior Cabin (ADA)"
+      ]
+    },
+    "virtual_image": {
+      "type": "text"
+    }
+  },
+  "config": {}
+}

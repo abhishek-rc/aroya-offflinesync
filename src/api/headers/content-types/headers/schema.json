@@ -1,0 +1,181 @@
+{
+  "kind": "collectionType",
+  "collectionName": "header",
+  "info": {
+    "singularName": "headers",
+    "pluralName": "header",
+    "displayName": "Header"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "header_logo": {
+      "type": "media",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "show_search": {
+      "type": "boolean",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "default": false
+    },
+    "search_icon": {
+      "type": "media",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "show_search"
+            },
+            true
+          ]
+        }
+      },
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "show_language": {
+      "type": "boolean",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "default": false
+    },
+    "language_icon": {
+      "type": "media",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "show_language"
+            },
+            true
+          ]
+        }
+      },
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "languages": {
+      "type": "enumeration",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "show_language"
+            },
+            true
+          ]
+        }
+      },
+      "enum": [
+        "AR",
+        "EN"
+      ]
+    },
+    "show_phone": {
+      "type": "boolean",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "phone_icon": {
+      "type": "media",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "show_phone"
+            },
+            true
+          ]
+        }
+      },
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "phone": {
+      "type": "biginteger",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "show_phone"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "site_setting": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::site-setting.site-setting",
+      "inversedBy": "headers"
+    }
+  }
+}

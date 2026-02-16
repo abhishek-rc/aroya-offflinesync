@@ -1,0 +1,60 @@
+{
+  "collectionName": "components_packages_add_ons",
+  "info": {
+    "displayName": "Add On"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "richtext"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "request_type": {
+      "type": "enumeration",
+      "enum": [
+        "ALL-INC",
+        "ALL-INC-P",
+        "ALL-INC-P-D",
+        "ARCADE",
+        "BUNDLE",
+        "CHALLENGE-CHAMBERS",
+        "CORPORATE",
+        "DINNING",
+        "DRINK",
+        "ENTERTAINMENT",
+        "F&B VENUES",
+        "FOOD",
+        "GIFT CARD",
+        "GRAT",
+        "HOTEL",
+        "IN-CABIN-EXPERIENCE",
+        "KIDS-CLUB",
+        "LAUNDRY",
+        "LOUNGE",
+        "MINIBAR",
+        "SPA",
+        "TRANSFER",
+        "WIFI",
+        "ALLERGIES",
+        "SPECIAL MEALS"
+      ]
+    },
+    "addOn_code": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "config": {}
+}

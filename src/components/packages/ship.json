@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_packages_ships",
+  "info": {
+    "displayName": "Ship"
+  },
+  "options": {},
+  "attributes": {
+    "ship_code": {
+      "type": "string",
+      "required": true
+    },
+    "ship_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  },
+  "config": {}
+}

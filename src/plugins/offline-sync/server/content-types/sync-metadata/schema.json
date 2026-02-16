@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sync_metadata",
+  "info": {
+    "singularName": "sync-metadata",
+    "pluralName": "sync-metadata",
+    "displayName": "Sync Metadata",
+    "description": "Tracks sync version and metadata for entities"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "contentType": {
+      "type": "string",
+      "required": true,
+      "index": true
+    },
+    "entityId": {
+      "type": "integer",
+      "required": true,
+      "index": true
+    },
+    "syncVersion": {
+      "type": "integer",
+      "default": 1,
+      "required": true
+    },
+    "lastSyncedAt": {
+      "type": "datetime"
+    },
+    "modifiedByLocation": {
+      "type": "string"
+    },
+    "syncStatus": {
+      "type": "enumeration",
+      "enum": ["synced", "pending", "conflict"],
+      "default": "synced"
+    },
+    "conflictFlag": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
+

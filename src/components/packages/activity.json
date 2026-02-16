@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_packages_activities",
+  "info": {
+    "displayName": "Activity"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "richtext"
+    },
+    "short_description": {
+      "type": "richtext"
+    },
+    "long_description": {
+      "type": "richtext"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "shorex_code": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "config": {}
+}

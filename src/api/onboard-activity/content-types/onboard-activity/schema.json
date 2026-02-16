@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "onboard_activities",
+  "info": {
+    "singularName": "onboard-activity",
+    "pluralName": "onboard-activities",
+    "displayName": "Onboard Activities"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "components": {
+      "type": "dynamiczone",
+      "components": [
+        "activity.spa-and-wellness",
+        "activity.shorex",
+        "activity.dining"
+      ]
+    },
+    "code": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    }
+  }
+}

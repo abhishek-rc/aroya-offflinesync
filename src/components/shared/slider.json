@@ -1,0 +1,51 @@
+{
+  "collectionName": "components_shared_sliders",
+  "info": {
+    "displayName": "Slider",
+    "icon": "address-book",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "blocks"
+    },
+    "description": {
+      "type": "blocks"
+    },
+    "mobile_image": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "desktop_image": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "textAlign": {
+      "type": "enumeration",
+      "default": "left",
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ]
+    },
+    "cta_button": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "collectionName": "components_shared_info_sections",
+  "info": {
+    "displayName": "Info section"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "richtext",
+      "required": true
+    },
+    "content": {
+      "type": "blocks",
+      "required": true
+    },
+    "headingAlignment": {
+      "type": "enumeration",
+      "required": true,
+      "default": "left",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "contentAlignment": {
+      "type": "enumeration",
+      "required": true,
+      "default": "left",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "image": {
+      "type": "component",
+      "component": "shared.media",
+      "repeatable": true
+    },
+    "tip": {
+      "type": "component",
+      "component": "shared.tip",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

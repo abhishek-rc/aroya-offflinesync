@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_shared_hero_banners",
+  "info": {
+    "displayName": "Hero Banner"
+  },
+  "options": {},
+  "attributes": {
+    "hero_banner": {
+      "type": "component",
+      "component": "shared.slider",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

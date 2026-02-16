@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_embarkation_embarkation_tables",
+  "info": {
+    "displayName": "Embarkation Table"
+  },
+  "options": {},
+  "attributes": {
+    "cabin_category": {
+      "type": "string"
+    },
+    "cabin_type": {
+      "type": "richtext"
+    },
+    "embarkation_window": {
+      "type": "string"
+    },
+    "cabin_code": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

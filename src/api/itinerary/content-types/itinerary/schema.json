@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "itineraries",
+  "info": {
+    "singularName": "itinerary",
+    "pluralName": "itineraries",
+    "displayName": "Booking Journey - Itinerary"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "Itinerary": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "packages.itinerary"
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+    "kind": "collectionType",
+    "collectionName": "document_mappings",
+    "info": {
+        "singularName": "document-mapping",
+        "pluralName": "document-mappings",
+        "displayName": "Document Mapping",
+        "description": "Maps replica documentIds to master documentIds"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {
+        "content-manager": {
+            "visible": false
+        },
+        "content-type-builder": {
+            "visible": false
+        }
+    },
+    "attributes": {
+        "shipId": {
+            "type": "string",
+            "required": true,
+            "maxLength": 100
+        },
+        "contentType": {
+            "type": "string",
+            "required": true,
+            "maxLength": 255
+        },
+        "replicaDocumentId": {
+            "type": "string",
+            "required": true,
+            "maxLength": 255
+        },
+        "masterDocumentId": {
+            "type": "string",
+            "required": true,
+            "maxLength": 255
+        },
+        "lastSyncedBy": {
+            "type": "string",
+            "required": false,
+            "maxLength": 100,
+            "description": "ShipId of the last ship that synced this document (for conflict detection)"
+        }
+    }
+}

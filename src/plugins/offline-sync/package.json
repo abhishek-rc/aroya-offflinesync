@@ -1,0 +1,31 @@
+{
+  "name": "strapi-plugin-offline-sync",
+  "version": "1.0.0",
+  "description": "Offline sync plugin for Strapi with Kafka integration",
+  "exports": {
+    "./package.json": "./package.json",
+    "./strapi-server": {
+      "types": "./server/src/index.ts",
+      "source": "./server/src/index.ts",
+      "require": "./strapi-server.js",
+      "default": "./strapi-server.js"
+    },
+    "./strapi-admin": {
+      "types": "./admin/src/index.tsx",
+      "source": "./admin/src/index.tsx",
+      "import": "./strapi-admin.js",
+      "require": "./strapi-admin.js",
+      "default": "./strapi-admin.js"
+    }
+  },
+  "strapi": {
+    "name": "offline-sync",
+    "displayName": "Offline Sync",
+    "description": "Enable offline-first synchronization with Kafka",
+    "kind": "plugin"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "minio": "^8.0.2"
+  }
+}

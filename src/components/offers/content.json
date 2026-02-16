@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_offers_contents",
+  "info": {
+    "displayName": "Content"
+  },
+  "options": {},
+  "attributes": {
+    "offer_valid_until": {
+      "type": "date"
+    },
+    "offer_apply_link": {
+      "type": "text"
+    },
+    "offer_content": {
+      "type": "richtext"
+    }
+  },
+  "config": {}
+}

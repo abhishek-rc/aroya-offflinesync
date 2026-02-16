@@ -1,0 +1,67 @@
+# Dependencies
+node_modules
+
+# Build output (we rebuild in Docker)
+dist
+build
+
+# Environment files (pass secrets via Docker env vars)
+.env
+.env.*
+!.env.example
+
+# Development files
+.tmp
+.cache
+.strapi
+.git
+.gitignore
+.editorconfig
+.eslintrc*
+.prettierrc*
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+test
+tests
+__tests__
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (no need to include in build context)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Data and uploads (should be mounted or use cloud storage)
+data
+jease-data
+.tmp
+
+# SQLite database (for development only)
+*.db
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+

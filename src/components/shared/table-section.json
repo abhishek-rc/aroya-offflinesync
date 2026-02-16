@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_shared_table_sections",
+  "info": {
+    "displayName": "Table section"
+  },
+  "options": {},
+  "attributes": {
+    "table_title": {
+      "type": "text"
+    },
+    "table_fields": {
+      "type": "customField",
+      "customField": "plugin::table-field.table"
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_destinations_destination_ports",
+  "info": {
+    "displayName": "Destination Ports"
+  },
+  "options": {},
+  "attributes": {
+    "ports": {
+      "type": "component",
+      "component": "destinations.ports",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

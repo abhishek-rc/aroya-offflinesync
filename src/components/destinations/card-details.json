@@ -1,0 +1,91 @@
+{
+  "collectionName": "components_destinations_card_details",
+  "info": {
+    "displayName": "Card Details"
+  },
+  "options": {},
+  "attributes": {
+    "card_title": {
+      "type": "string"
+    },
+    "Image": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "duration": {
+      "type": "string"
+    },
+    "level": {
+      "type": "string"
+    },
+    "short_description": {
+      "type": "richtext"
+    },
+    "cta": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    },
+    "long_description": {
+      "type": "richtext"
+    },
+    "has_important_info": {
+      "type": "boolean"
+    },
+    "imp_logo": {
+      "type": "media",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_important_info"
+            },
+            true
+          ]
+        }
+      },
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "imp_heading": {
+      "type": "string",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_important_info"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "essentials": {
+      "type": "component",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_important_info"
+            },
+            true
+          ]
+        }
+      },
+      "component": "destinations.important-points",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

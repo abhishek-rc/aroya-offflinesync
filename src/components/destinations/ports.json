@@ -1,0 +1,34 @@
+{
+  "collectionName": "components_destinations_ports",
+  "info": {
+    "displayName": "Ports"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "richtext"
+    },
+    "feature_image": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "cta": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    },
+    "port_details": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::port-detail.port-detail",
+      "private": true
+    }
+  },
+  "config": {}
+}

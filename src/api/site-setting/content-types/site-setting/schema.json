@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "site_settings",
+  "info": {
+    "singularName": "site-setting",
+    "pluralName": "site-settings",
+    "displayName": "SiteSetting"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "code": {
+      "type": "enumeration",
+      "required": true,
+      "default": "WEB",
+      "enum": [
+        "WEB",
+        "MBA"
+      ]
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::page.page",
+      "private": true,
+      "mappedBy": "site_settings"
+    },
+    "headers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::headers.headers",
+      "private": true,
+      "mappedBy": "site_setting"
+    },
+    "footers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::footers.footers",
+      "private": true,
+      "mappedBy": "site_setting"
+    },
+    "documents": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::doc.doc",
+      "mappedBy": "site_settings"
+    }
+  }
+}

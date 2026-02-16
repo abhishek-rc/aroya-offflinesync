@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_embarkation_embarkations",
+  "info": {
+    "displayName": "Embarkation"
+  },
+  "options": {},
+  "attributes": {
+    "embarkation": {
+      "type": "component",
+      "component": "embarkation.embarkation-table",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

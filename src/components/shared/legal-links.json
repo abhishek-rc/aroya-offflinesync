@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_shared_legal_links",
+  "info": {
+    "displayName": "Legal Links"
+  },
+  "options": {},
+  "attributes": {
+    "footer_legal_links": {
+      "type": "component",
+      "component": "shared.footer-legal-links",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

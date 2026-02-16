@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_faq_faq_categories",
+  "info": {
+    "displayName": "Faq Categories"
+  },
+  "options": {},
+  "attributes": {
+    "category_title": {
+      "type": "string",
+      "required": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "display_order": {
+      "type": "biginteger",
+      "required": true
+    },
+    "faq_items": {
+      "type": "component",
+      "component": "faq.faq-items",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "destination_activities",
+  "info": {
+    "singularName": "destination-activity",
+    "pluralName": "destination-activities",
+    "displayName": "Destination - Activity"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "components": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "destinations.destination-feature-card",
+        "shared.hero-banner"
+      ]
+    },
+    "port_detail": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::port-detail.port-detail",
+      "inversedBy": "destination_activities"
+    }
+  }
+}

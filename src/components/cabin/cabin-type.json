@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_cabin_cabin_types",
+  "info": {
+    "displayName": "Cabin Categories Detail"
+  },
+  "options": {},
+  "attributes": {
+    "ship": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "AC01"
+      ]
+    },
+    "code": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "INTERIOR",
+        "SEAVIEW",
+        "BALCONY",
+        "AROYA-VILLAS",
+        "AROYA-SUITES",
+        "KHUZAMA"
+      ]
+    }
+  },
+  "config": {}
+}

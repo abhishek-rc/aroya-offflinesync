@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_tab_tab_items",
+  "info": {
+    "displayName": "Tab Item"
+  },
+  "options": {},
+  "attributes": {
+    "tab_item": {
+      "type": "component",
+      "component": "shared.gallery-item",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

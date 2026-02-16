@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pages",
+  "info": {
+    "singularName": "page",
+    "pluralName": "pages",
+    "displayName": "Page"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_title": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true,
+      "unique": false
+    },
+    "components": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "shared.faq",
+        "shared.hero-banner",
+        "information.info",
+        "shared.gallery-item",
+        "shared.feature-section",
+        "shared.image-and-text-section",
+        "shared.card-section",
+        "destinations.villas-and-suites",
+        "destinations.venue-section",
+        "embarkation.embarkation"
+      ],
+      "required": true
+    },
+    "SEO": {
+      "type": "component",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "shared.seo",
+      "repeatable": false
+    },
+    "site_settings": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::site-setting.site-setting",
+      "inversedBy": "pages"
+    }
+  }
+}

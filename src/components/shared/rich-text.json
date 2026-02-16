@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_shared_rich_texts",
+  "info": {
+    "displayName": "Rich text",
+    "icon": "align-justify",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "text",
+      "default": "title",
+      "unique": false
+    },
+    "content": {
+      "type": "richtext"
+    },
+    "services_media": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  }
+}

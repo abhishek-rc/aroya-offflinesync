@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_destinations_points",
+  "info": {
+    "displayName": "points"
+  },
+  "options": {},
+  "attributes": {
+    "image": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "point_description": {
+      "type": "richtext"
+    }
+  },
+  "config": {}
+}

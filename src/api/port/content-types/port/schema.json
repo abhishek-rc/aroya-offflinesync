@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ports",
+  "info": {
+    "singularName": "port",
+    "pluralName": "ports",
+    "displayName": "Booking Journey - Port"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "departure": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "port_code": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true
+    },
+    "destinations": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::destination.destination",
+      "inversedBy": "ports"
+    }
+  }
+}

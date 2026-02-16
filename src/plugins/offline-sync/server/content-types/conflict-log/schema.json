@@ -1,0 +1,61 @@
+{
+  "kind": "collectionType",
+  "collectionName": "conflict_log",
+  "info": {
+    "singularName": "conflict-log",
+    "pluralName": "conflict-logs",
+    "displayName": "Conflict Log",
+    "description": "Log of conflicts detected during sync"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "contentType": {
+      "type": "string",
+      "required": true,
+      "index": true
+    },
+    "entityId": {
+      "type": "integer",
+      "required": true,
+      "index": true
+    },
+    "localData": {
+      "type": "json"
+    },
+    "remoteData": {
+      "type": "json"
+    },
+    "conflictingFields": {
+      "type": "json"
+    },
+    "conflictType": {
+      "type": "enumeration",
+      "enum": ["direct", "indirect", "structural"],
+      "default": "direct"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "resolved"],
+      "default": "pending",
+      "required": true,
+      "index": true
+    },
+    "resolution": {
+      "type": "enumeration",
+      "enum": ["keep_local", "keep_remote", "merge"]
+    },
+    "resolvedAt": {
+      "type": "datetime"
+    },
+    "resolvedBy": {
+      "type": "integer"
+    },
+    "mergedData": {
+      "type": "json"
+    }
+  }
+}
+

@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_destinations_services",
+  "info": {
+    "displayName": "Service"
+  },
+  "options": {},
+  "attributes": {
+    "service_name": {
+      "type": "component",
+      "component": "shared.rich-text",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

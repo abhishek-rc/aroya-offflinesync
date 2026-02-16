@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "destination_transportations",
+  "info": {
+    "singularName": "destination-transportation",
+    "pluralName": "destination-transportations",
+    "displayName": "Destination - Transportation"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "components": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "destinations.destination-feature-card"
+      ]
+    },
+    "port_details": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::port-detail.port-detail",
+      "mappedBy": "destination_transportation"
+    }
+  }
+}

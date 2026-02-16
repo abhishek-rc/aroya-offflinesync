@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "excursions",
+  "info": {
+    "singularName": "excursion",
+    "pluralName": "excursions",
+    "displayName": "Booking Journey - Excursions"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "excursions": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "packages.excursions"
+      ]
+    }
+  }
+}

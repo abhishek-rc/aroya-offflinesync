@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_test_test_faq_items",
+  "info": {
+    "displayName": "Test Faq item"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "questions": {
+      "type": "string"
+    },
+    "answers": {
+      "type": "blocks"
+    },
+    "markdown": {
+      "type": "richtext"
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,79 @@
+{
+  "kind": "collectionType",
+  "collectionName": "destinations",
+  "info": {
+    "singularName": "destination",
+    "pluralName": "destinations",
+    "displayName": "Booking Journey - Destination"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "destination": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "showIn": {
+      "type": "enumeration",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "default": "both",
+      "enum": [
+        "filter",
+        "tab",
+        "both"
+      ]
+    },
+    "destination_code": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true
+    },
+    "packages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::package.package",
+      "private": true,
+      "mappedBy": "destination"
+    },
+    "ports": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::port.port",
+      "mappedBy": "destinations"
+    }
+  }
+}

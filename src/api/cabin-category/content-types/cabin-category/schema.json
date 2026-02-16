@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cabin_categories",
+  "info": {
+    "singularName": "cabin-category",
+    "pluralName": "cabin-categories",
+    "displayName": "Booking Journey - Cabin Category"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_title": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true
+    },
+    "cabin_category": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "shared.image-and-text-section",
+        "shared.hero-banner",
+        "shared.gallery-item",
+        "shared.feature-section"
+      ]
+    },
+    "cabin_types": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cabin-type.cabin-type",
+      "mappedBy": "cabin_category"
+    },
+    "cabin_category_detail": {
+      "type": "component",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "cabin.cabin-type",
+      "repeatable": false
+    }
+  }
+}

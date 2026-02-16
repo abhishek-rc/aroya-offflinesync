@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_shared_card_sections",
+  "info": {
+    "displayName": "Card Section"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "richtext"
+    },
+    "section_items": {
+      "type": "component",
+      "component": "shared.media",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

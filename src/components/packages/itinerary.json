@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_packages_itineraries",
+  "info": {
+    "displayName": "Itinerary"
+  },
+  "options": {},
+  "attributes": {
+    "port_desc": {
+      "type": "component",
+      "component": "packages.package-image-and-text",
+      "repeatable": false
+    }
+  },
+  "config": {}
+}

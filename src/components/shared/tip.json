@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_shared_tips",
+  "info": {
+    "displayName": "tip"
+  },
+  "options": {},
+  "attributes": {
+    "tipType": {
+      "type": "enumeration",
+      "required": false,
+      "default": "tip",
+      "enum": [
+        "proTip",
+        "tip"
+      ]
+    },
+    "tipText": {
+      "type": "text"
+    }
+  },
+  "config": {}
+}

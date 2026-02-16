@@ -1,0 +1,44 @@
+{
+  "collectionName": "components_activity_shorexes",
+  "info": {
+    "displayName": "Excursion"
+  },
+  "options": {},
+  "attributes": {
+    "activity_media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "port_code": {
+      "type": "string"
+    },
+    "full_description": {
+      "type": "richtext"
+    },
+    "policy": {
+      "type": "richtext"
+    },
+    "activity_level": {
+      "type": "string"
+    },
+    "short_description": {
+      "type": "richtext"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "amenties": {
+      "type": "richtext"
+    },
+    "notes": {
+      "type": "richtext"
+    }
+  },
+  "config": {}
+}

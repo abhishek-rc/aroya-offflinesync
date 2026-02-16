@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_packages_package_image_and_texts",
+  "info": {
+    "displayName": "Port"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "richtext"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "port_code": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "config": {}
+}

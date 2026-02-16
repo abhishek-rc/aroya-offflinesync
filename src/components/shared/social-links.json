@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_shared_social_links",
+  "info": {
+    "displayName": "Social Links"
+  },
+  "options": {},
+  "attributes": {
+    "platform": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "ariaLabel": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

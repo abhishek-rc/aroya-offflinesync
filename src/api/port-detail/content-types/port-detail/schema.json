@@ -1,0 +1,81 @@
+{
+  "kind": "collectionType",
+  "collectionName": "port_details",
+  "info": {
+    "singularName": "port-detail",
+    "pluralName": "port-details",
+    "displayName": "Destination - Port Details"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "components": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "shared.hero-banner",
+        "shared.image-and-text-section",
+        "destinations.important-points",
+        "shared.gallery-item",
+        "shared.rich-text"
+      ]
+    },
+    "destination_activities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::destination-activity.destination-activity",
+      "mappedBy": "port_detail"
+    },
+    "has_transportation": {
+      "type": "boolean",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "default": false
+    },
+    "destination_transportation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::destination-transportation.destination-transportation",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_transportation"
+            },
+            true
+          ]
+        }
+      },
+      "inversedBy": "port_details"
+    }
+  }
+}

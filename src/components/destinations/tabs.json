@@ -1,0 +1,39 @@
+{
+  "collectionName": "components_destinations_tabs",
+  "info": {
+    "displayName": "Tabs"
+  },
+  "options": {},
+  "attributes": {
+    "tab_title": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": false
+    },
+    "tabs": {
+      "type": "component",
+      "component": "destinations.tab-section",
+      "repeatable": true
+    },
+    "has_services": {
+      "type": "boolean",
+      "default": false
+    },
+    "services": {
+      "type": "component",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_services"
+            },
+            true
+          ]
+        }
+      },
+      "component": "destinations.service",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

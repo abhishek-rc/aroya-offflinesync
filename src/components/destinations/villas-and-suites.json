@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_destinations_villas_and_suites",
+  "info": {
+    "displayName": "Villas & Suites"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "richtext"
+    },
+    "section": {
+      "type": "component",
+      "component": "destinations.tabs",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

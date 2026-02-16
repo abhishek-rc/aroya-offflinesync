@@ -1,0 +1,53 @@
+{
+  "collectionName": "components_destinations_tab_sections",
+  "info": {
+    "displayName": "Tab Section"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "has_dimension": {
+      "type": "boolean",
+      "default": false
+    },
+    "dimension": {
+      "type": "string",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_dimension"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "essentials": {
+      "type": "component",
+      "component": "destinations.points",
+      "repeatable": true
+    },
+    "cta": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,72 @@
+{
+  "collectionName": "components_destinations_card_sections",
+  "info": {
+    "displayName": "Card Section"
+  },
+  "options": {},
+  "attributes": {
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "has_logo": {
+      "type": "boolean",
+      "default": false
+    },
+    "logo": {
+      "type": "media",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_logo"
+            },
+            true
+          ]
+        }
+      },
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "has_category": {
+      "type": "boolean",
+      "default": false
+    },
+    "category_title": {
+      "type": "string",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_category"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "cta": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

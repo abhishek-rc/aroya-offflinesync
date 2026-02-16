@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_activity_spa_and_wellnesses",
+  "info": {
+    "displayName": "Spa"
+  },
+  "options": {},
+  "attributes": {
+    "activity_media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "treatment_type": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

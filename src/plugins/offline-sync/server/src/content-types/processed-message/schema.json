@@ -1,0 +1,56 @@
+{
+    "kind": "collectionType",
+    "collectionName": "processed_messages",
+    "info": {
+        "singularName": "processed-message",
+        "pluralName": "processed-messages",
+        "displayName": "Processed Message",
+        "description": "Tracks processed messages for idempotency"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {
+        "content-manager": {
+            "visible": false
+        },
+        "content-type-builder": {
+            "visible": false
+        }
+    },
+    "attributes": {
+        "messageId": {
+            "type": "string",
+            "required": true,
+            "unique": true,
+            "maxLength": 255
+        },
+        "shipId": {
+            "type": "string",
+            "maxLength": 100
+        },
+        "contentType": {
+            "type": "string",
+            "maxLength": 255
+        },
+        "contentId": {
+            "type": "string",
+            "maxLength": 255
+        },
+        "operation": {
+            "type": "string",
+            "maxLength": 50
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "processed",
+                "failed"
+            ],
+            "default": "processed"
+        },
+        "processedAt": {
+            "type": "datetime"
+        }
+    }
+}

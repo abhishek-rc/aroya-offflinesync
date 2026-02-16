@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_destinations_destination_feature_cards",
+  "info": {
+    "displayName": "Destination Feature Card"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "blocks"
+    },
+    "cta": {
+      "type": "component",
+      "component": "shared.button",
+      "repeatable": true
+    },
+    "card_details": {
+      "type": "component",
+      "component": "destinations.card-details",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

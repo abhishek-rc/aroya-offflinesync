@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sync_queue",
+  "info": {
+    "singularName": "sync-queue",
+    "pluralName": "sync-queues",
+    "displayName": "Sync Queue",
+    "description": "Queue of pending sync operations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "operation": {
+      "type": "enumeration",
+      "enum": ["create", "update", "delete"],
+      "required": true
+    },
+    "contentType": {
+      "type": "string",
+      "required": true,
+      "index": true
+    },
+    "entityId": {
+      "type": "integer",
+      "required": true,
+      "index": true
+    },
+    "data": {
+      "type": "json"
+    },
+    "version": {
+      "type": "integer",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "synced", "failed"],
+      "default": "pending",
+      "required": true,
+      "index": true
+    },
+    "errorMessage": {
+      "type": "text"
+    },
+    "retryCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "syncedAt": {
+      "type": "datetime"
+    },
+    "location": {
+      "type": "string"
+    }
+  }
+}
+

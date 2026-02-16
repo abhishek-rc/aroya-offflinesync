@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_destinations_venue_sections",
+  "info": {
+    "displayName": "Venue Section"
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "venues": {
+      "type": "component",
+      "component": "destinations.card-section",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

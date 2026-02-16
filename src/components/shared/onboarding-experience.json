@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_shared_onboarding_experiences",
+  "info": {
+    "displayName": "Onboarding Experience"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "richtext"
+    },
+    "section_items": {
+      "type": "component",
+      "component": "shared.media",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

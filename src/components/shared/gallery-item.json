@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_shared_gallery_items",
+  "info": {
+    "displayName": "Gallery Item"
+  },
+  "options": {},
+  "attributes": {
+    "has_tabs": {
+      "type": "boolean",
+      "default": false
+    },
+    "tab_name": {
+      "type": "string",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_tabs"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "media": {
+      "type": "component",
+      "component": "shared.media",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "dead_letters",
+  "info": {
+    "singularName": "dead-letter",
+    "pluralName": "dead-letters",
+    "displayName": "Dead Letter",
+    "description": "Failed messages for retry or investigation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "messageId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "shipId": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "contentType": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "contentId": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "operation": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "payload": {
+      "type": "json"
+    },
+    "errorMessage": {
+      "type": "text"
+    },
+    "errorStack": {
+      "type": "text"
+    },
+    "retryCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "maxRetries": {
+      "type": "integer",
+      "default": 3
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "retrying", "exhausted", "resolved"],
+      "default": "pending"
+    },
+    "lastRetryAt": {
+      "type": "datetime"
+    },
+    "resolvedAt": {
+      "type": "datetime"
+    },
+    "resolvedBy": {
+      "type": "string",
+      "maxLength": 255
+    }
+  }
+}
+

@@ -1,0 +1,116 @@
+{
+  "collectionName": "components_shared_image_and_text_sections",
+  "info": {
+    "displayName": "Image & Text Section"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "richtext"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "image_position": {
+      "type": "enumeration",
+      "default": "left",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "content_alignment": {
+      "type": "enumeration",
+      "default": "start",
+      "enum": [
+        "start",
+        "center",
+        "end"
+      ]
+    },
+    "has_description_1": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "description_1": {
+      "type": "richtext",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_description_1"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "has_description_2": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "description_2": {
+      "type": "richtext",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_description_2"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "has_description_3": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "description_3": {
+      "type": "richtext",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_description_3"
+            },
+            true
+          ]
+        }
+      }
+    },
+    "has_cta": {
+      "type": "boolean",
+      "default": false
+    },
+    "cta": {
+      "type": "component",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "has_cta"
+            },
+            true
+          ]
+        }
+      },
+      "component": "shared.button",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

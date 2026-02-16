@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sync_sessions",
+  "info": {
+    "singularName": "sync-session",
+    "pluralName": "sync-sessions",
+    "displayName": "Sync Session",
+    "description": "Tracks ship online status and sync sessions"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "shipId": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "index": true
+    },
+    "lastSeenAt": {
+      "type": "datetime",
+      "required": true,
+      "index": true
+    },
+    "lastSyncAt": {
+      "type": "datetime"
+    },
+    "isOnline": {
+      "type": "boolean",
+      "default": false
+    },
+    "onlineThreshold": {
+      "type": "integer",
+      "default": 300000,
+      "description": "Milliseconds before considering ship offline (default 5 minutes)"
+    },
+    "totalSyncs": {
+      "type": "integer",
+      "default": 0
+    },
+    "lastSyncStatus": {
+      "type": "enumeration",
+      "enum": ["success", "failed", "partial"],
+      "default": "success"
+    },
+    "metadata": {
+      "type": "json",
+      "description": "Additional ship metadata (IP, user agent, etc.)"
+    }
+  }
+}
+

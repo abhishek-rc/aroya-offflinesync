@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ships",
+  "info": {
+    "singularName": "ship",
+    "pluralName": "ships",
+    "displayName": "Ship"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "page_name": {
+      "type": "string"
+    },
+    "page_slug": {
+      "type": "string"
+    },
+    "ship": {
+      "type": "dynamiczone",
+      "components": [
+        "packages.ship"
+      ]
+    },
+    "packages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::package.package",
+      "inversedBy": "ships"
+    }
+  }
+}

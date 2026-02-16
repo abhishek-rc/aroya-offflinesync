@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_faq_faq_items",
+  "info": {
+    "displayName": "Faq Items"
+  },
+  "options": {},
+  "attributes": {
+    "faq_question": {
+      "type": "blocks",
+      "required": true
+    },
+    "faq_answer": {
+      "type": "blocks",
+      "required": true
+    },
+    "display_order": {
+      "type": "biginteger",
+      "required": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    }
+  },
+  "config": {}
+}

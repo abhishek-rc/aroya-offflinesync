@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cabin_trip_descriptions",
+  "info": {
+    "singularName": "cabin-trip-description",
+    "pluralName": "cabin-trip-descriptions",
+    "displayName": "Booking Journey - Cabin Trip Description"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_title": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "cabin_trip_des": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "shared.rich-text"
+      ]
+    }
+  }
+}

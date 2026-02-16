@@ -1,0 +1,54 @@
+{
+  "collectionName": "components_activity_dinings",
+  "info": {
+    "displayName": "Dining"
+  },
+  "options": {},
+  "attributes": {
+    "activity_media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "location": {
+      "type": "richtext"
+    },
+    "cuisine_type": {
+      "type": "text"
+    },
+    "menu_images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "amenties": {
+      "type": "richtext"
+    },
+    "policy": {
+      "type": "richtext"
+    },
+    "service_type": {
+      "type": "richtext"
+    },
+    "venue_type": {
+      "type": "richtext"
+    },
+    "open_times": {
+      "type": "richtext"
+    }
+  },
+  "config": {}
+}

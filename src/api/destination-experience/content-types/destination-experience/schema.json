@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "destination_experiences",
+  "info": {
+    "singularName": "destination-experience",
+    "pluralName": "destination-experiences",
+    "displayName": "Destination - Experience"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "page_name": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "page_slug": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "components": {
+      "type": "dynamiczone",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "components": [
+        "shared.hero-banner",
+        "shared.rich-text",
+        "shared.image-and-text-section",
+        "destinations.destination-ports",
+        "destinations.destination-feature-card",
+        "destinations.villas-and-suites",
+        "destinations.venue-section"
+      ]
+    }
+  }
+}

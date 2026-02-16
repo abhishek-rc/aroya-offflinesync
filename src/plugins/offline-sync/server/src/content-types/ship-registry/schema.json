@@ -1,0 +1,47 @@
+{
+    "kind": "collectionType",
+    "collectionName": "ship_registries",
+    "info": {
+        "singularName": "ship-registry",
+        "pluralName": "ship-registries",
+        "displayName": "Ship Registry",
+        "description": "Registered ships for offline sync"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {
+        "content-manager": {
+            "visible": false
+        },
+        "content-type-builder": {
+            "visible": false
+        }
+    },
+    "attributes": {
+        "shipId": {
+            "type": "string",
+            "required": true,
+            "unique": true,
+            "maxLength": 100
+        },
+        "shipName": {
+            "type": "string",
+            "maxLength": 255
+        },
+        "connectivityStatus": {
+            "type": "enumeration",
+            "enum": [
+                "online",
+                "offline"
+            ],
+            "default": "offline"
+        },
+        "lastSeenAt": {
+            "type": "datetime"
+        },
+        "metadata": {
+            "type": "json"
+        }
+    }
+}

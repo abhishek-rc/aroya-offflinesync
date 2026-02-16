@@ -1,0 +1,48 @@
+{
+  "collectionName": "components_shared_buttons",
+  "info": {
+    "displayName": "button"
+  },
+  "options": {},
+  "attributes": {
+    "text": {
+      "type": "string",
+      "required": true
+    },
+    "link_url": {
+      "type": "text",
+      "required": true
+    },
+    "buttonColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    },
+    "buttonHoverColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    },
+    "buttonBorderColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    },
+    "buttonBorderHoverColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    },
+    "buttonTextColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    },
+    "textHoverColor": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+    }
+  },
+  "config": {}
+}
