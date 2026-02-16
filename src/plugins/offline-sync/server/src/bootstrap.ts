@@ -109,6 +109,173 @@ function debounce<T extends (...args: any[]) => any>(
   };
 }
 
+/**
+ * Retry connection with exponential backoff
+ * Production-ready: Handles errors, prevents memory leaks, provides detailed logging
+ * 
+ * @param connectFn - Function that returns a Promise for connection
+ * @param serviceName - Human-readable service name for logging
+ * @param strapi - Strapi instance for logging
+ * @param maxRetries - Maximum number of retry attempts (default: 10)
+ * @param initialDelay - Initial delay in milliseconds (default: 2000)
+ * @param isBackgroundRetry - Internal flag to prevent infinite recursion
+ * @returns Promise that resolves when connection succeeds or all retries exhausted
+ */
+async function retryConnection(
+  connectFn: () => Promise<void>,
+  serviceName: string,
+  strapi: any,
+  maxRetries: number = 10,
+  initialDelay: number = 2000,
+  isBackgroundRetry: boolean = false
+): Promise<void> {
+  // Validate inputs
+  if (typeof connectFn !== 'function') {
+    throw new Error(`[OfflineSync] Invalid connectFn for ${serviceName}`);
+  }
+  if (maxRetries < 1) {
+    throw new Error(`[OfflineSync] maxRetries must be >= 1 for ${serviceName}`);
+  }
+  if (initialDelay < 0) {
+    throw new Error(`[OfflineSync] initialDelay must be >= 0 for ${serviceName}`);
+  }
+
+  // Check if shutting down - abort retries
+  if ((strapi as any)?._isShuttingDown) {
+    strapi.log.info(`[OfflineSync] Skipping ${serviceName} connection retry - shutting down`);
+    return;
+  }
+
+  let attempt = 0;
+  let delay = initialDelay;
+  const maxDelay = 30000; // Cap at 30 seconds
+  const backoffMultiplier = 1.5;
+  const connectionTimeout = 60000; // 60 second connection timeout
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  try {
+    while (attempt < maxRetries) {
+      // Check if shutting down before each attempt
+      if ((strapi as any)?._isShuttingDown) {
+        strapi.log.info(`[OfflineSync] Aborting ${serviceName} connection retry - shutting down`);
+        return;
+      }
+
+      try {
+        // Attempt connection with timeout protection
+        const connectionPromise = connectFn();
+        const timeoutPromise = new Promise<void>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`Connection timeout after ${connectionTimeout}ms`));
+          }, connectionTimeout);
+        });
+
+        await Promise.race([connectionPromise, timeoutPromise]);
+
+        // Clear timeout if connection succeeded
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        // Success - log and return
+        const attemptInfo = isBackgroundRetry ? ' (background retry)' : '';
+        strapi.log.info(
+          `[OfflineSync] ✅ ${serviceName} connected successfully${attemptInfo} (attempt ${attempt + 1}/${maxRetries})`
+        );
+        return;
+      } catch (error: unknown) {
+        // Clear timeout on error
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        attempt++;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        // Log error details
+        if (attempt < maxRetries) {
+          const logLevel = attempt <= 3 ? 'warn' : 'debug'; // Reduce log noise after 3 attempts
+          if (logLevel === 'warn') {
+            strapi.log.warn(
+              `[OfflineSync] ${serviceName} connection attempt ${attempt}/${maxRetries} failed: ${errorMessage}`
+            );
+            strapi.log.info(`[OfflineSync] Retrying ${serviceName} in ${(delay / 1000).toFixed(1)}s...`);
+          } else {
+            strapi.log.debug(
+              `[OfflineSync] ${serviceName} retry ${attempt}/${maxRetries}: ${errorMessage}`
+            );
+          }
+
+          // Wait before retry with exponential backoff
+          // Use a cancellable promise to support shutdown
+          await new Promise<void>((resolve, reject) => {
+            timeoutId = setTimeout(() => {
+              timeoutId = null;
+              resolve();
+            }, delay);
+
+            // Check for shutdown periodically
+            const checkInterval = setInterval(() => {
+              if ((strapi as any)?._isShuttingDown) {
+                clearInterval(checkInterval);
+                if (timeoutId) {
+                  clearTimeout(timeoutId);
+                  timeoutId = null;
+                }
+                reject(new Error('Shutdown in progress'));
+              }
+            }, 1000);
+          }).catch(() => {
+            // Shutdown detected - abort
+            throw new Error('Shutdown in progress');
+          });
+
+          // Calculate next delay with exponential backoff
+          delay = Math.min(Math.floor(delay * backoffMultiplier), maxDelay);
+        } else {
+          // All retries exhausted
+          strapi.log.error(
+            `[OfflineSync] ❌ ${serviceName} failed to connect after ${maxRetries} attempts`
+          );
+          strapi.log.error(`[OfflineSync] Last error: ${errorMessage}`);
+          if (errorStack && process.env.NODE_ENV !== 'production') {
+            strapi.log.debug(`[OfflineSync] Error stack: ${errorStack}`);
+          }
+
+          // Only schedule background retry if not already a background retry and not shutting down
+          if (!isBackgroundRetry && !(strapi as any)?._isShuttingDown) {
+            strapi.log.info(`[OfflineSync] Will continue retrying ${serviceName} in background...`);
+            // Use setTimeout with stored ID for potential cleanup (though unlikely to be needed)
+            const bgRetryTimeout = setTimeout(() => {
+              retryConnection(connectFn, serviceName, strapi, 5, 30000, true).catch(() => {
+                // Background retries also failed - log but don't throw
+                strapi.log.error(`[OfflineSync] Background retries exhausted for ${serviceName}`);
+              });
+            }, 30000);
+            // Store timeout ID (could be added to cleanup if needed)
+            (bgRetryTimeout as any).__backgroundRetry = true;
+          }
+
+          // Throw error to allow caller to handle
+          throw new Error(`${serviceName} connection failed: ${errorMessage}`);
+        }
+      }
+    }
+  } finally {
+    // Ensure timeout is cleared on exit
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  }
+
+  // This should never be reached, but TypeScript requires it
+  throw new Error(`${serviceName} connection failed: Max retries exceeded`);
+}
+
 export default ({ strapi }: { strapi: any }) => {
   // Get and validate plugin config
   const pluginConfig: PluginConfig = strapi.config.get('plugin::offline-sync', {});
@@ -137,8 +304,14 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Initialize Kafka producer for replica (sends to master)
     const kafkaProducer = strapi.plugin('offline-sync').service('kafka-producer');
-    kafkaProducer.connect().catch((error: any) => {
-      strapi.log.warn(`Kafka producer connection deferred: ${error.message}`);
+    retryConnection(
+      () => kafkaProducer.connect(),
+      'Kafka producer (replica)',
+      strapi,
+      10, // 10 retries
+      2000 // Start with 2 second delay
+    ).catch((error: any) => {
+      strapi.log.error(`[OfflineSync] Failed to connect Kafka producer after retries: ${error.message}`);
     });
 
     // Add producer disconnect to cleanup
@@ -153,8 +326,14 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Initialize Kafka consumer for replica (receives master updates for bi-directional sync)
     const kafkaConsumer = strapi.plugin('offline-sync').service('kafka-consumer');
-    kafkaConsumer.connect().catch((error: any) => {
-      strapi.log.warn(`Kafka consumer connection deferred: ${error.message}`);
+    retryConnection(
+      () => kafkaConsumer.connect(),
+      'Kafka consumer (replica)',
+      strapi,
+      10, // 10 retries
+      2000 // Start with 2 second delay
+    ).catch((error: any) => {
+      strapi.log.error(`[OfflineSync] Failed to connect Kafka consumer after retries: ${error.message}`);
     });
 
     // Add consumer disconnect to cleanup
@@ -193,12 +372,12 @@ export default ({ strapi }: { strapi: any }) => {
     // Register reconnection callback for push after connection stabilizes
     connectivityMonitor.onReconnect(async () => {
       strapi.log.info('[OfflineSync] 🔄 Connection restored - waiting for stabilization...');
-      
+
       // Use setTimeout to:
       // 1. Avoid blocking the connectivity check
       // 2. Give the Kafka connection time to fully stabilize before pushing
       const STABILIZATION_DELAY_MS = 3000; // 3 seconds to stabilize
-      
+
       setTimeout(async () => {
         try {
           const syncService = strapi.plugin('offline-sync').service('sync-service');
@@ -289,18 +468,21 @@ export default ({ strapi }: { strapi: any }) => {
     // Interval: 60 seconds (production-ready, not too frequent)
     const HEARTBEAT_INTERVAL_MS = 60 * 1000; // 60 seconds
     let heartbeatIntervalId: NodeJS.Timeout | null = null;
+    let heartbeatInitialTimeout: NodeJS.Timeout | null = null;
 
     const startHeartbeat = () => {
-      // Send initial heartbeat after Kafka connects
-      setTimeout(async () => {
+      // Send initial heartbeat after Kafka connects (track timeout for cleanup)
+      heartbeatInitialTimeout = setTimeout(async () => {
+        heartbeatInitialTimeout = null;
         try {
           const kafkaProducer = strapi.plugin('offline-sync').service('kafka-producer');
           if (kafkaProducer.isConnected()) {
             await kafkaProducer.sendHeartbeat();
             strapi.log.info(`[Heartbeat] 💓 Started (interval: ${HEARTBEAT_INTERVAL_MS / 1000}s)`);
           }
-        } catch (e) {
-          // Ignore initial heartbeat failure
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.debug(`[Heartbeat] Initial heartbeat failed: ${message}`);
         }
       }, 5000); // Wait 5s for Kafka to connect
 
@@ -311,8 +493,10 @@ export default ({ strapi }: { strapi: any }) => {
           if (kafkaProducer.isConnected()) {
             await kafkaProducer.sendHeartbeat();
           }
-        } catch (e) {
+        } catch (error: unknown) {
           // Heartbeat failures are non-critical, silently ignore
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.debug(`[Heartbeat] Periodic heartbeat failed: ${message}`);
         }
       }, HEARTBEAT_INTERVAL_MS);
     };
@@ -321,6 +505,12 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Add heartbeat cleanup
     cleanupFunctions.push(() => {
+      // Clear initial timeout if still pending
+      if (heartbeatInitialTimeout) {
+        clearTimeout(heartbeatInitialTimeout);
+        heartbeatInitialTimeout = null;
+      }
+      // Clear periodic interval
       if (heartbeatIntervalId) {
         clearInterval(heartbeatIntervalId);
         heartbeatIntervalId = null;
@@ -334,6 +524,7 @@ export default ({ strapi }: { strapi: any }) => {
     // ========================================================
     const AUTO_PUSH_INTERVAL_MS = pluginConfig.sync.autoPushInterval || 30000; // Default 30 seconds
     let autoPushIntervalId: NodeJS.Timeout | null = null;
+    let autoPushInitialTimeout: NodeJS.Timeout | null = null;
     let wasOffline = false; // Track previous connectivity state
 
     const autoPushCheck = async () => {
@@ -355,16 +546,16 @@ export default ({ strapi }: { strapi: any }) => {
           if (wasReconnected || wasOffline) {
             strapi.log.info(`[AutoPush] 🔄 Reconnected! Waiting for connection to stabilize...`);
             wasOffline = false;
-            
+
             // Wait for stabilization before pushing
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
+
             // Verify still connected after delay
             if (!kafkaProducer.isConnected()) {
               strapi.log.warn(`[AutoPush] Connection unstable, skipping push`);
               return;
             }
-            
+
             strapi.log.info(`[AutoPush] Connection stable. Found ${pendingItems} pending items to push`);
           }
 
@@ -385,13 +576,26 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Start auto-push interval
     const startAutoPush = () => {
-      // Do an initial check after startup (wait for Kafka to connect)
-      setTimeout(async () => {
-        await autoPushCheck();
+      // Do an initial check after startup (wait for Kafka to connect) - track timeout for cleanup
+      autoPushInitialTimeout = setTimeout(async () => {
+        autoPushInitialTimeout = null;
+        try {
+          await autoPushCheck();
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.error(`[AutoPush] Initial check error: ${message}`);
+        }
       }, 10000); // Wait 10s after startup
 
-      // Schedule periodic checks
-      autoPushIntervalId = setInterval(autoPushCheck, AUTO_PUSH_INTERVAL_MS);
+      // Schedule periodic checks with error handling
+      autoPushIntervalId = setInterval(async () => {
+        try {
+          await autoPushCheck();
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.error(`[AutoPush] Periodic check error: ${message}`);
+        }
+      }, AUTO_PUSH_INTERVAL_MS);
       strapi.log.info(`[AutoPush] ✅ Enabled (interval: ${AUTO_PUSH_INTERVAL_MS / 1000}s)`);
     };
 
@@ -399,6 +603,12 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Add auto-push cleanup
     cleanupFunctions.push(() => {
+      // Clear initial timeout if still pending
+      if (autoPushInitialTimeout) {
+        clearTimeout(autoPushInitialTimeout);
+        autoPushInitialTimeout = null;
+      }
+      // Clear periodic interval
       if (autoPushIntervalId) {
         clearInterval(autoPushIntervalId);
         autoPushIntervalId = null;
@@ -412,6 +622,7 @@ export default ({ strapi }: { strapi: any }) => {
     let kafkaConsumer: ReturnType<typeof strapi.plugin> | null = null;
     let cleanupIntervalId: NodeJS.Timeout | null = null;
     let masterAutoPushIntervalId: NodeJS.Timeout | null = null;
+    let masterAutoPushInitialTimeout: NodeJS.Timeout | null = null;
     let isShuttingDown = false;
     let masterWasOffline = false;
 
@@ -419,13 +630,15 @@ export default ({ strapi }: { strapi: any }) => {
     const kafkaProducer = strapi.plugin('offline-sync').service('kafka-producer');
     const masterSyncQueue = strapi.plugin('offline-sync').service('master-sync-queue');
 
-    kafkaProducer.connect()
-      .then(() => {
-        strapi.log.info('[OfflineSync] ✅ Kafka producer connected (master mode)');
-      })
-      .catch((error: any) => {
-        strapi.log.warn(`[OfflineSync] Kafka producer connection deferred: ${error.message}`);
-      });
+    retryConnection(
+      () => kafkaProducer.connect(),
+      'Kafka producer (master)',
+      strapi,
+      10, // 10 retries
+      2000 // Start with 2 second delay
+    ).catch((error: any) => {
+      strapi.log.error(`[OfflineSync] Failed to connect Kafka producer after retries: ${error.message}`);
+    });
 
     // Add producer disconnect to cleanup
     cleanupFunctions.push(async () => {
@@ -505,13 +718,26 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Start Master auto-push interval
     const startMasterAutoPush = () => {
-      // Initial check after startup
-      setTimeout(async () => {
-        await masterAutoPushCheck();
+      // Initial check after startup (track timeout for cleanup)
+      masterAutoPushInitialTimeout = setTimeout(async () => {
+        masterAutoPushInitialTimeout = null;
+        try {
+          await masterAutoPushCheck();
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.error(`[MasterAutoPush] Initial check error: ${message}`);
+        }
       }, 15000); // Wait 15s for Kafka to connect
 
       // Schedule periodic checks
-      masterAutoPushIntervalId = setInterval(masterAutoPushCheck, MASTER_AUTO_PUSH_INTERVAL_MS);
+      masterAutoPushIntervalId = setInterval(async () => {
+        try {
+          await masterAutoPushCheck();
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.error(`[MasterAutoPush] Periodic check error: ${message}`);
+        }
+      }, MASTER_AUTO_PUSH_INTERVAL_MS);
       strapi.log.info(`[MasterAutoPush] ✅ Enabled (interval: ${MASTER_AUTO_PUSH_INTERVAL_MS / 1000}s)`);
     };
 
@@ -519,13 +745,18 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Initialize Kafka consumer (receives from ships)
     const kafkaService = strapi.plugin('offline-sync').service('kafka-consumer');
-    kafkaService.connect()
+    retryConnection(
+      () => kafkaService.connect(),
+      'Kafka consumer (master)',
+      strapi,
+      10, // 10 retries
+      2000 // Start with 2 second delay
+    )
       .then(() => {
         kafkaConsumer = kafkaService;
-        strapi.log.info('[OfflineSync] ✅ Kafka consumer connected (master mode)');
       })
-      .catch((error: Error) => {
-        strapi.log.warn(`[OfflineSync] Kafka consumer connection deferred: ${error.message}`);
+      .catch((error: any) => {
+        strapi.log.error(`[OfflineSync] Failed to connect Kafka consumer after retries: ${error.message}`);
       });
 
     // Periodic cleanup tasks (every 5 minutes)
@@ -580,21 +811,32 @@ export default ({ strapi }: { strapi: any }) => {
     cleanupFunctions.push(async () => {
       isShuttingDown = true;
 
+      // Clear initial timeout if still pending
+      if (masterAutoPushInitialTimeout) {
+        clearTimeout(masterAutoPushInitialTimeout);
+        masterAutoPushInitialTimeout = null;
+      }
+
+      // Clear periodic interval
       if (masterAutoPushIntervalId) {
         clearInterval(masterAutoPushIntervalId);
         masterAutoPushIntervalId = null;
       }
 
+      // Clear cleanup interval
       if (cleanupIntervalId) {
         clearInterval(cleanupIntervalId);
         cleanupIntervalId = null;
       }
 
+      // Disconnect Kafka consumer
       if (kafkaConsumer) {
         try {
           await kafkaService.disconnect();
-        } catch {
-          // Ignore disconnect errors
+          strapi.log.info('[OfflineSync] Kafka consumer disconnected (master)');
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          strapi.log.debug(`[OfflineSync] Consumer disconnect error (non-critical): ${message}`);
         }
       }
     });
