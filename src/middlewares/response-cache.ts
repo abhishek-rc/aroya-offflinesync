@@ -20,7 +20,7 @@ interface CachedResponse {
 
 // Initialize cache with configuration
 const cache = new NodeCache({
-  stdTTL: parseInt(process.env.CACHE_TTL || '300', 10), // Default: 5 minutes
+  stdTTL: parseInt(process.env.CACHE_TTL || '3600', 10), // Default: 1 hour
   checkperiod: parseInt(process.env.CACHE_CHECK_PERIOD || '60', 10), // Cleanup interval
   useClones: false, // Better performance, use original objects
   deleteOnExpire: true,
@@ -71,6 +71,11 @@ function shouldCache(ctx): boolean {
 
   // Don't cache admin routes
   if (path.startsWith('/admin')) {
+    return false;
+  }
+
+  // Don't cache offline-sync plugin routes
+  if (path.startsWith('/api/offline-sync')) {
     return false;
   }
 
@@ -161,7 +166,7 @@ export default (config, { strapi }) => {
 
     // Cache the response if it was successful
     if (ctx.status === 200 && ctx.body) {
-      const ttl = config?.ttl || parseInt(process.env.CACHE_TTL || '300', 10);
+      const ttl = config?.ttl || parseInt(process.env.CACHE_TTL || '3600', 10);
 
       cache.set<CachedResponse>(cacheKey, {
         status: ctx.status,
