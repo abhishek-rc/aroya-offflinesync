@@ -15,6 +15,8 @@ interface MediaConfig {
   transformUrls: boolean;
   syncOnStartup: boolean;
   syncInterval: number;
+  maxFilesPerSync?: number; // Limit files per sync run (for large buckets, 0 = unlimited)
+  disableFullSync?: boolean; // If true, only use on-demand sync (no periodic full sync)
   oss: {
     endPoint: string;
     port: number;
@@ -87,6 +89,8 @@ export default ({ strapi }: { strapi: any }) => {
       transformUrls: config.media.transformUrls !== false,
       syncOnStartup: config.media.syncOnStartup !== false,
       syncInterval: config.media.syncInterval || 300000, // 5 minutes default
+      maxFilesPerSync: config.media.maxFilesPerSync || 0, // 0 = unlimited
+      disableFullSync: config.media.disableFullSync === true, // Default: false (allow full sync)
       oss: {
         endPoint: config.media.oss?.endPoint || '',
         port: config.media.oss?.port || 443,
@@ -247,6 +251,7 @@ export default ({ strapi }: { strapi: any }) => {
 
   /**
    * Sync all files from OSS to MinIO
+   * Production-optimized: Parallel processing with batching for large file counts
    */
   const syncAllFiles = async (): Promise<void> => {
     const config = getMediaConfig();
@@ -267,6 +272,8 @@ export default ({ strapi }: { strapi: any }) => {
     const startTime = Date.now();
     let processed = 0;
     let listed = 0;
+    const BATCH_SIZE = 20; // Process 20 files in parallel
+    const CONCURRENT_BATCHES = 5; // 5 batches = 100 files concurrently
 
     try {
       strapi.log.info('[MediaSync] Starting media sync from OSS to MinIO...');
@@ -297,51 +304,102 @@ export default ({ strapi }: { strapi: any }) => {
         return;
       }
 
-      // List all objects in OSS bucket with prefix
+      // Collect all file objects first (for batching)
+      const allObjects: Array<{ name: string; size: number }> = [];
       const objectsStream = ossClient.listObjects(config.oss.bucket, prefix, true);
 
+      strapi.log.info('[MediaSync] Collecting file list from OSS...');
       for await (const obj of objectsStream) {
-        listed++;
-
-        if (!obj.name) continue;
-
-        // Log first few files for debugging
-        if (listed <= 5) {
-          strapi.log.debug(`[MediaSync] Found file: ${obj.name} (${obj.size} bytes)`);
-        }
-
-        processed++;
-
-        // Check if file already exists in MinIO
-        const exists = await fileExistsInMinio(obj.name);
-        if (exists) {
-          syncStats.filesSkipped++;
-          continue;
-        }
-
-        // Sync file
-        const success = await syncFile(obj.name);
-        if (success && processed <= 10) {
-          strapi.log.debug(`[MediaSync] ✅ Downloaded: ${obj.name}`);
-        }
-
-        // Log progress every 100 files
-        if (processed % 100 === 0) {
-          strapi.log.info(`[MediaSync] Progress: ${processed} files processed (${syncStats.filesDownloaded} downloaded, ${syncStats.filesSkipped} skipped)`);
+        if (obj.name) {
+          allObjects.push({ name: obj.name, size: obj.size || 0 });
         }
       }
 
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      listed = allObjects.length;
+      
+      // Apply maxFilesPerSync limit if configured (for large buckets)
+      const filesToProcess = config.maxFilesPerSync && config.maxFilesPerSync > 0
+        ? Math.min(listed, config.maxFilesPerSync)
+        : listed;
+
+      if (filesToProcess < listed) {
+        strapi.log.info(`[MediaSync] Limiting sync to ${filesToProcess} files (${listed} total available)`);
+      }
+
+      strapi.log.info(`[MediaSync] Found ${listed} files to check. Processing ${filesToProcess} files in batches of ${BATCH_SIZE} (${CONCURRENT_BATCHES} concurrent batches)...`);
 
       if (listed === 0) {
         strapi.log.warn(`[MediaSync] ⚠️ No files found in OSS bucket with prefix "${prefix}"`);
         strapi.log.warn(`[MediaSync] Check if uploadPath is correct in your config`);
-      } else {
-        strapi.log.info(`[MediaSync] ✅ Sync completed in ${duration}s`);
-        strapi.log.info(`[MediaSync]   Files listed: ${listed}`);
-        strapi.log.info(`[MediaSync]   Downloaded: ${syncStats.filesDownloaded}`);
-        strapi.log.info(`[MediaSync]   Skipped (already exists): ${syncStats.filesSkipped}`);
-        strapi.log.info(`[MediaSync]   Failed: ${syncStats.filesFailed}`);
+        return;
+      }
+
+      // Limit files to process
+      const objectsToProcess = filesToProcess < listed
+        ? allObjects.slice(0, filesToProcess)
+        : allObjects;
+
+      // Process files in batches with parallel execution
+      for (let i = 0; i < objectsToProcess.length; i += BATCH_SIZE * CONCURRENT_BATCHES) {
+        // Process CONCURRENT_BATCHES batches at once
+        const batchPromises: Promise<void>[] = [];
+
+        for (let batchStart = i; batchStart < Math.min(i + BATCH_SIZE * CONCURRENT_BATCHES, objectsToProcess.length); batchStart += BATCH_SIZE) {
+          const batch = objectsToProcess.slice(batchStart, batchStart + BATCH_SIZE);
+          
+          const batchPromise = (async () => {
+            // Process batch items in parallel
+            const filePromises = batch.map(async (obj) => {
+              processed++;
+
+              // Check if file already exists in MinIO
+              const exists = await fileExistsInMinio(obj.name);
+              if (exists) {
+                syncStats.filesSkipped++;
+                return;
+              }
+
+              // Sync file
+              const success = await syncFile(obj.name);
+              if (success && syncStats.filesDownloaded <= 10) {
+                strapi.log.debug(`[MediaSync] ✅ Downloaded: ${obj.name}`);
+              }
+            });
+
+            await Promise.all(filePromises);
+          })();
+
+          batchPromises.push(batchPromise);
+        }
+
+        // Wait for all batches in this group to complete
+        await Promise.all(batchPromises);
+
+        // Log progress every 100 files
+        if (processed % 100 === 0) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const rate = processed > 0 ? (processed / ((Date.now() - startTime) / 1000)).toFixed(1) : '0';
+          strapi.log.info(
+            `[MediaSync] Progress: ${processed}/${filesToProcess} files processed ` +
+            `(${syncStats.filesDownloaded} downloaded, ${syncStats.filesSkipped} skipped, ${syncStats.filesFailed} failed) ` +
+            `[${rate} files/sec, ${elapsed}s elapsed]`
+          );
+        }
+      }
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      const rate = processed > 0 ? (processed / parseFloat(duration)).toFixed(1) : '0';
+
+      strapi.log.info(`[MediaSync] ✅ Sync completed in ${duration}s`);
+      strapi.log.info(`[MediaSync]   Files listed: ${listed} (processed: ${filesToProcess})`);
+      strapi.log.info(`[MediaSync]   Downloaded: ${syncStats.filesDownloaded}`);
+      strapi.log.info(`[MediaSync]   Skipped (already exists): ${syncStats.filesSkipped}`);
+      strapi.log.info(`[MediaSync]   Failed: ${syncStats.filesFailed}`);
+      strapi.log.info(`[MediaSync]   Average rate: ${rate} files/sec`);
+      
+      if (filesToProcess < listed && config.maxFilesPerSync && config.maxFilesPerSync > 0) {
+        strapi.log.info(`[MediaSync] ⚠️ Note: ${listed - filesToProcess} files not processed (maxFilesPerSync limit)`);
+        strapi.log.info(`[MediaSync]   Remaining files will be synced on next run or via on-demand sync`);
       }
 
       syncStats.lastSyncAt = new Date();
@@ -424,19 +482,23 @@ export default ({ strapi }: { strapi: any }) => {
       // Ensure bucket exists
       await ensureBucket();
 
-      // Run initial sync if configured
-      if (config.syncOnStartup) {
+      // Run initial sync if configured (skip if disabled for large buckets)
+      if (config.syncOnStartup && !config.disableFullSync) {
         strapi.log.info('[MediaSync] Running initial sync...');
         // Run async to not block startup
         setImmediate(() => this.sync());
+      } else if (config.disableFullSync) {
+        strapi.log.info('[MediaSync] Full sync disabled - using on-demand sync only');
       }
 
-      // Start periodic sync
-      if (config.syncInterval > 0) {
+      // Start periodic sync (skip if disabled for large buckets)
+      if (config.syncInterval > 0 && !config.disableFullSync) {
         syncIntervalId = setInterval(() => {
           this.sync();
         }, config.syncInterval);
         strapi.log.info(`[MediaSync] Periodic sync enabled (interval: ${config.syncInterval / 1000}s)`);
+      } else if (config.disableFullSync) {
+        strapi.log.info('[MediaSync] Periodic sync disabled - using on-demand sync only');
       }
     },
 

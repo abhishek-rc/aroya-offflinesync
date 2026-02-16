@@ -46,8 +46,10 @@ export default ({ env }) => ({
       media: {
         enabled: env('SYNC_MODE', 'replica') === 'replica',  // Auto-enable only on replica
         transformUrls: true,
-        syncOnStartup: true,
-        syncInterval: 300000, // 5 minutes
+        syncOnStartup: env.bool('MEDIA_SYNC_ON_STARTUP', true), // Set false for large buckets (12k+ files)
+        syncInterval: env.int('MEDIA_SYNC_INTERVAL', 300000), // 5 minutes (set 0 to disable periodic sync)
+        maxFilesPerSync: env.int('MEDIA_MAX_FILES_PER_SYNC', 0), // 0 = unlimited, set limit for large buckets
+        disableFullSync: env.bool('MEDIA_DISABLE_FULL_SYNC', false), // If true, only on-demand sync (recommended for 10k+ files)
 
         // OSS (Master) configuration
         oss: {
@@ -78,7 +80,8 @@ export default ({ env }) => ({
   },
 
 
-  // Upload Plugin (works for BOTH local + OSS)
+  // Upload Plugin
+  // Master: OSS (cloud) | Replica: MinIO (local, works offline)
   upload: {
     config: {
       // 🔴 Windows EPERM fix: disable ALL image processing
@@ -86,21 +89,43 @@ export default ({ env }) => ({
       responsiveDimensions: false,
       breakpoints: {},
 
-      provider: env.bool('OSS_ENABLED', false)
-        ? 'strapi-provider-upload-oss'
-        : 'local',
+      // Replica: MinIO (local, works offline) | Master: OSS (cloud)
+      provider:
+        env('SYNC_MODE') === 'replica'
+          ? 'aws-s3' // MinIO is S3-compatible
+          : env.bool('OSS_ENABLED', false)
+            ? 'strapi-provider-upload-oss'
+            : 'local',
 
-      providerOptions: env.bool('OSS_ENABLED', false)
-        ? {
-          accessKeyId: env('OSS_ACCESS_KEY_ID'),
-          accessKeySecret: env('OSS_ACCESS_KEY_SECRET'),
-          region: env('OSS_REGION'),
-          bucket: env('OSS_BUCKET'),
-          uploadPath: env('OSS_UPLOAD_PATH', 'strapi-uploads'),
-          baseUrl: env('OSS_BASE_URL'),
-          timeout: env.int('OSS_TIMEOUT', 60000),
-        }
-        : {},
+      providerOptions:
+        env('SYNC_MODE') === 'replica'
+          ? {
+              // MinIO (S3-compatible) - works offline on ship
+              baseUrl: env('MINIO_BASE_URL', 'http://localhost:9000/media'),
+              s3Options: {
+                endpoint: env('MINIO_ENDPOINT', 'http://localhost:9000'),
+                credentials: {
+                  accessKeyId: env('MINIO_ACCESS_KEY', 'minioadmin'),
+                  secretAccessKey: env('MINIO_SECRET_KEY', 'minioadmin123'),
+                },
+                region: 'us-east-1', // MinIO ignores but required by SDK
+                forcePathStyle: true, // Required for MinIO
+                params: {
+                  Bucket: env('MINIO_BUCKET', 'media'),
+                },
+              },
+            }
+          : env.bool('OSS_ENABLED', false)
+            ? {
+                accessKeyId: env('OSS_ACCESS_KEY_ID'),
+                accessKeySecret: env('OSS_ACCESS_KEY_SECRET'),
+                region: env('OSS_REGION'),
+                bucket: env('OSS_BUCKET'),
+                uploadPath: env('OSS_UPLOAD_PATH', 'strapi-uploads'),
+                baseUrl: env('OSS_BASE_URL'),
+                timeout: env.int('OSS_TIMEOUT', 60000),
+              }
+            : {},
 
       actionOptions: {
         upload: {},

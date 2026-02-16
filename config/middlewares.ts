@@ -14,6 +14,7 @@ export default [
             'blob:',
             '*.aliyuncs.com',
             '*.aroya.com',
+            'localhost:9000', // MinIO (replica)
           ],
           'media-src': [
             "'self'",
@@ -21,6 +22,7 @@ export default [
             'blob:',
             '*.aliyuncs.com',
             '*.aroya.com',
+            'localhost:9000', // MinIO (replica)
           ],
           upgradeInsecureRequests: null,
         },
