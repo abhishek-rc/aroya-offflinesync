@@ -108,6 +108,8 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
             username: config.kafka.sasl.username,
             password: config.kafka.sasl.password,
           } : undefined,
+          connectionTimeout: 30000, // 30 second timeout
+          requestTimeout: 60000,    // 60 second request timeout
         });
 
         // Use stable group ID for production

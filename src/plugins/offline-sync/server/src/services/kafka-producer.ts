@@ -55,8 +55,8 @@ export default ({ strapi }: { strapi: any }) => {
             username: config.kafka.sasl.username,
             password: config.kafka.sasl.password,
           } : undefined,
-          connectionTimeout: 10000, // 10 second timeout
-          requestTimeout: 30000,    // 30 second request timeout
+          connectionTimeout: 30000, // 30 second timeout
+          requestTimeout: 60000,    // 60 second request timeout
         });
 
         producer = kafka.producer({
