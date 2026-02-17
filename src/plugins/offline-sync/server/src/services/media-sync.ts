@@ -895,20 +895,28 @@ export default ({ strapi }: { strapi: any }) => {
         strapi.log.debug(`[MediaSync] File found in MinIO: size=${stat.size}, contentType=${stat.metaData?.['content-type'] || 'unknown'}`);
 
         // Determine the target path in OSS
-        // If the MinIO path already starts with uploadPath, use it as-is
-        // Otherwise, prepend uploadPath
+        // Preserve the full path from MinIO (including /uploads if present)
+        // Example: 
+        // - MinIO path: uploads/file.jpg -> OSS path: uploads/file.jpg
+        // - MinIO path: file.jpg -> OSS path: uploads/file.jpg (if uploadPath is set)
         let ossObjectName = objectName;
         const uploadPath = config.oss.uploadPath?.replace(/\/$/, '') || '';
         
         if (uploadPath) {
-          // Check if path already includes uploadPath prefix
+          // If MinIO path already starts with uploadPath, use as-is
+          // Otherwise, prepend uploadPath
           if (objectName.startsWith(`${uploadPath}/`)) {
-            // Already has the prefix, use as-is
+            // Already has the prefix (e.g., uploads/file.jpg), use as-is
             ossObjectName = objectName;
+            strapi.log.debug(`[MediaSync] MinIO path already includes uploadPath, using as-is: ${ossObjectName}`);
           } else {
-            // Add the prefix
+            // Add the prefix (e.g., file.jpg -> uploads/file.jpg)
             ossObjectName = `${uploadPath}/${objectName}`;
+            strapi.log.debug(`[MediaSync] Prepending uploadPath to MinIO path: ${objectName} -> ${ossObjectName}`);
           }
+        } else {
+          // No uploadPath configured, use MinIO path as-is
+          strapi.log.debug(`[MediaSync] No uploadPath configured, using MinIO path as-is: ${ossObjectName}`);
         }
 
         strapi.log.debug(`[MediaSync] Uploading to OSS: bucket=${config.oss.bucket}, object=${ossObjectName}`);
@@ -947,14 +955,29 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       try {
-        // Add uploadPath prefix if configured
-        const ossObjectName = config.oss.uploadPath
-          ? `${config.oss.uploadPath.replace(/\/$/, '')}/${objectName}`
-          : objectName;
+        // Use the same path logic as uploadFileToOss
+        // Preserve the full path from MinIO (including /uploads if present)
+        let ossObjectName = objectName;
+        const uploadPath = config.oss.uploadPath?.replace(/\/$/, '') || '';
+        
+        if (uploadPath) {
+          // If MinIO path already starts with uploadPath, use as-is
+          // Otherwise, prepend uploadPath
+          if (objectName.startsWith(`${uploadPath}/`)) {
+            // Already has the prefix (e.g., uploads/file.jpg), use as-is
+            ossObjectName = objectName;
+          } else {
+            // Add the prefix (e.g., file.jpg -> uploads/file.jpg)
+            ossObjectName = `${uploadPath}/${objectName}`;
+          }
+        }
 
         await ossClient.statObject(config.oss.bucket, ossObjectName);
+        strapi.log.debug(`[MediaSync] File exists in OSS: ${ossObjectName}`);
         return true;
-      } catch {
+      } catch (error: any) {
+        // File doesn't exist - this is expected for new files
+        strapi.log.debug(`[MediaSync] File not found in OSS: ${objectName} (will upload)`);
         return false;
       }
     },
@@ -1000,17 +1023,13 @@ export default ({ strapi }: { strapi: any }) => {
         if (typeof value === 'string') {
           if (value.includes(minioBaseUrl)) {
             // Extract path after the base URL
-            // Example: http://localhost:9000/media/0000bc_06b03ed573.jpg -> 0000bc_06b03ed573.jpg
+            // Example URLs:
+            // - http://localhost:9000/media/uploads/0000bc_06b03ed573.jpg -> uploads/0000bc_06b03ed573.jpg
+            // - http://localhost:9000/media/0000bc_06b03ed573.jpg -> 0000bc_06b03ed573.jpg
             let url = value.replace(minioBaseUrl, '').replace(/^\//, '');
             
-            // Remove bucket name prefix if present (MinIO baseUrl includes bucket name)
-            // The baseUrl is http://localhost:9000/media where 'media' is the bucket
-            // So if URL starts with bucket name, remove it
-            const bucketName = config.minio.bucket;
-            if (url.startsWith(`${bucketName}/`)) {
-              url = url.replace(`${bucketName}/`, '');
-            }
-            
+            // Keep the full path as-is (including /uploads prefix if present)
+            // The path should match exactly how it's stored in MinIO bucket
             if (url) {
               paths.add(url);
               strapi.log.debug(`[MediaSync] Extracted MinIO path from URL: ${value} -> ${url}`);
@@ -1025,7 +1044,16 @@ export default ({ strapi }: { strapi: any }) => {
 
       extractFromValue(data);
       const pathsArray = Array.from(paths);
-      strapi.log.debug(`[MediaSync] Extracted ${pathsArray.length} MinIO paths: ${pathsArray.join(', ')}`);
+      
+      if (pathsArray.length === 0) {
+        // Log the data structure to help debug why no paths were found
+        strapi.log.warn('[MediaSync] No MinIO paths extracted from data');
+        strapi.log.debug(`[MediaSync] MinIO baseUrl: ${minioBaseUrl}`);
+        strapi.log.debug(`[MediaSync] Sample data structure: ${JSON.stringify(data, null, 2).substring(0, 500)}`);
+      } else {
+        strapi.log.debug(`[MediaSync] Extracted ${pathsArray.length} MinIO paths: ${pathsArray.join(', ')}`);
+      }
+      
       return pathsArray;
     },
 
@@ -1073,20 +1101,20 @@ export default ({ strapi }: { strapi: any }) => {
             // Check if already exists in OSS
             const existsInOss = await this.fileExistsInOss(objectPath);
             if (existsInOss) {
-              strapi.log.debug(`[MediaSync] Skipping ${objectPath} - already in OSS`);
+              strapi.log.info(`[MediaSync] ✅ File already exists in OSS: ${objectPath} - skipping upload`);
               result.synced++; // Count as success
               continue;
             }
 
-            // Upload from MinIO to OSS
-            strapi.log.info(`[MediaSync] Uploading ${objectPath} from MinIO to OSS...`);
+            // File doesn't exist in OSS - upload it now
+            strapi.log.info(`[MediaSync] 📤 File not found in OSS, uploading ${objectPath} from MinIO to OSS...`);
             const success = await this.uploadFileToOss(objectPath);
             if (success) {
               result.synced++;
               strapi.log.info(`[MediaSync] ✅ Successfully uploaded ${objectPath} to OSS`);
             } else {
               result.failed++;
-              strapi.log.error(`[MediaSync] ❌ Failed to upload ${objectPath} to OSS`);
+              strapi.log.error(`[MediaSync] ❌ Failed to upload ${objectPath} to OSS - check logs above for details`);
             }
           } catch (fileError: any) {
             result.failed++;
@@ -1272,12 +1300,18 @@ export default ({ strapi }: { strapi: any }) => {
 
       const config = getMediaConfig();
       if (!config) {
+        strapi.log.warn('[MediaSync] prepareContentForMasterPush: Media sync config not available');
         return result;
       }
 
       try {
+        strapi.log.info('[MediaSync] 🔄 Preparing content for master push...');
+        strapi.log.debug(`[MediaSync] Content data keys: ${Object.keys(data || {}).join(', ')}`);
+        
         // 1. Sync media files from MinIO to OSS
         result.fileSyncResult = await this.syncContentMediaToOss(data);
+        
+        strapi.log.info(`[MediaSync] Media sync result: ${result.fileSyncResult.synced} synced, ${result.fileSyncResult.failed} failed`);
 
         // 2. Extract file IDs and get their records
         const fileIds = this.extractFileIds(data);
