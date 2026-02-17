@@ -5,6 +5,7 @@ export default {
     enabled: true,
     mode: process.env.SYNC_MODE || 'replica',
     shipId: process.env.SYNC_SHIP_ID || null,
+    masterUrl: process.env.SYNC_MASTER_URL || null,
     kafka: {
       brokers: process.env.KAFKA_BROKERS?.split(',') || ['localhost:9092'],
       ssl: process.env.KAFKA_SSL_ENABLED === 'true',
