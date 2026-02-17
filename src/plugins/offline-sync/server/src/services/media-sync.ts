@@ -886,15 +886,32 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       try {
+        strapi.log.debug(`[MediaSync] Attempting to get file from MinIO: bucket=${config.minio.bucket}, object=${objectName}`);
+        
         // Get file from MinIO
         const dataStream = await minioClient.getObject(config.minio.bucket, objectName);
         const stat = await minioClient.statObject(config.minio.bucket, objectName);
 
+        strapi.log.debug(`[MediaSync] File found in MinIO: size=${stat.size}, contentType=${stat.metaData?.['content-type'] || 'unknown'}`);
+
         // Determine the target path in OSS
-        // If uploadPath is configured, prepend it
-        const ossObjectName = config.oss.uploadPath
-          ? `${config.oss.uploadPath.replace(/\/$/, '')}/${objectName}`
-          : objectName;
+        // If the MinIO path already starts with uploadPath, use it as-is
+        // Otherwise, prepend uploadPath
+        let ossObjectName = objectName;
+        const uploadPath = config.oss.uploadPath?.replace(/\/$/, '') || '';
+        
+        if (uploadPath) {
+          // Check if path already includes uploadPath prefix
+          if (objectName.startsWith(`${uploadPath}/`)) {
+            // Already has the prefix, use as-is
+            ossObjectName = objectName;
+          } else {
+            // Add the prefix
+            ossObjectName = `${uploadPath}/${objectName}`;
+          }
+        }
+
+        strapi.log.debug(`[MediaSync] Uploading to OSS: bucket=${config.oss.bucket}, object=${ossObjectName}`);
 
         // Upload to OSS
         await ossClient.putObject(
@@ -909,6 +926,13 @@ export default ({ strapi }: { strapi: any }) => {
         return true;
       } catch (error: any) {
         strapi.log.error(`[MediaSync] Failed to upload ${objectName} to OSS: ${error.message}`);
+        strapi.log.error(`[MediaSync] Error details: ${JSON.stringify({
+          bucket: config.oss.bucket,
+          objectName,
+          ossObjectName: config.oss.uploadPath ? `${config.oss.uploadPath}/${objectName}` : objectName,
+          errorCode: error.code,
+          errorMessage: error.message,
+        })}`);
         return false;
       }
     },
@@ -976,9 +1000,20 @@ export default ({ strapi }: { strapi: any }) => {
         if (typeof value === 'string') {
           if (value.includes(minioBaseUrl)) {
             // Extract path after the base URL
-            const url = value.replace(minioBaseUrl, '').replace(/^\//, '');
+            // Example: http://localhost:9000/media/0000bc_06b03ed573.jpg -> 0000bc_06b03ed573.jpg
+            let url = value.replace(minioBaseUrl, '').replace(/^\//, '');
+            
+            // Remove bucket name prefix if present (MinIO baseUrl includes bucket name)
+            // The baseUrl is http://localhost:9000/media where 'media' is the bucket
+            // So if URL starts with bucket name, remove it
+            const bucketName = config.minio.bucket;
+            if (url.startsWith(`${bucketName}/`)) {
+              url = url.replace(`${bucketName}/`, '');
+            }
+            
             if (url) {
               paths.add(url);
+              strapi.log.debug(`[MediaSync] Extracted MinIO path from URL: ${value} -> ${url}`);
             }
           }
         } else if (Array.isArray(value)) {
@@ -989,7 +1024,9 @@ export default ({ strapi }: { strapi: any }) => {
       };
 
       extractFromValue(data);
-      return Array.from(paths);
+      const pathsArray = Array.from(paths);
+      strapi.log.debug(`[MediaSync] Extracted ${pathsArray.length} MinIO paths: ${pathsArray.join(', ')}`);
+      return pathsArray;
     },
 
     /**
@@ -1001,6 +1038,13 @@ export default ({ strapi }: { strapi: any }) => {
 
       const config = getMediaConfig();
       if (!config || !ossClient || !minioClient) {
+        if (!config) {
+          strapi.log.warn('[MediaSync] Media sync config not available');
+        } else if (!ossClient) {
+          strapi.log.warn('[MediaSync] OSS client not initialized - check OSS credentials');
+        } else if (!minioClient) {
+          strapi.log.warn('[MediaSync] MinIO client not initialized - check MinIO connection');
+        }
         return result;
       }
 
@@ -1009,13 +1053,23 @@ export default ({ strapi }: { strapi: any }) => {
         const objectPaths = this.extractMinioObjectPaths(data);
 
         if (objectPaths.length === 0) {
+          strapi.log.debug('[MediaSync] No MinIO paths found in content data');
           return result;
         }
 
         strapi.log.info(`[MediaSync] 🔄 Syncing ${objectPaths.length} files to OSS before push...`);
+        strapi.log.debug(`[MediaSync] Extracted paths: ${objectPaths.join(', ')}`);
 
         for (const objectPath of objectPaths) {
           try {
+            // Check if file exists in MinIO first
+            const existsInMinio = await this.fileExistsInMinio(objectPath);
+            if (!existsInMinio) {
+              strapi.log.warn(`[MediaSync] ⚠️ File not found in MinIO: ${objectPath} (bucket: ${config.minio.bucket})`);
+              result.failed++;
+              continue;
+            }
+
             // Check if already exists in OSS
             const existsInOss = await this.fileExistsInOss(objectPath);
             if (existsInOss) {
@@ -1025,25 +1079,30 @@ export default ({ strapi }: { strapi: any }) => {
             }
 
             // Upload from MinIO to OSS
+            strapi.log.info(`[MediaSync] Uploading ${objectPath} from MinIO to OSS...`);
             const success = await this.uploadFileToOss(objectPath);
             if (success) {
               result.synced++;
+              strapi.log.info(`[MediaSync] ✅ Successfully uploaded ${objectPath} to OSS`);
             } else {
               result.failed++;
+              strapi.log.error(`[MediaSync] ❌ Failed to upload ${objectPath} to OSS`);
             }
           } catch (fileError: any) {
             result.failed++;
             strapi.log.error(`[MediaSync] Failed to sync ${objectPath} to OSS: ${fileError.message}`);
+            strapi.log.error(`[MediaSync] Error stack: ${fileError.stack}`);
           }
         }
 
-        if (result.synced > 0) {
-          strapi.log.info(`[MediaSync] ⬆️ Synced ${result.synced} files to OSS, ${result.failed} failed`);
+        if (result.synced > 0 || result.failed > 0) {
+          strapi.log.info(`[MediaSync] ⬆️ Sync completed: ${result.synced} synced, ${result.failed} failed`);
         }
 
         return result;
       } catch (error: any) {
         strapi.log.error(`[MediaSync] Content media to OSS sync error: ${error.message}`);
+        strapi.log.error(`[MediaSync] Error stack: ${error.stack}`);
         return result;
       }
     },
