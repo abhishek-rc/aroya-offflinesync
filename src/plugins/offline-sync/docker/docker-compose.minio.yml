@@ -27,7 +27,15 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     volumes:
-      - minio_data:/data
+      # Option A: Use Docker volume (default - files stored in Docker volume)
+      # - minio_data:/data
+      
+      # Option B: Use local uploads folder (files stored in ./uploads directory)
+      # Use absolute path or relative to docker-compose file location
+      - ./uploads:/data
+      # Or use absolute path:
+      # - ${PWD}/uploads:/data
+      # - C:/codebase/strapi-dev/uploads:/data  # Windows absolute path
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:

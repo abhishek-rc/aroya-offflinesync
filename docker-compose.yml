@@ -24,7 +24,7 @@ services:
       # The advertised address is what clients use to connect (ngrok address)
       # But the actual bind port stays fixed at 29092
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://localhost:9092,EXTERNAL://0.tcp.in.ngrok.io:13988
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://localhost:9092,EXTERNAL://0.tcp.in.ngrok.io:11144
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       
