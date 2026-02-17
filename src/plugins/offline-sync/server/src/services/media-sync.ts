@@ -1224,7 +1224,34 @@ export default ({ strapi }: { strapi: any }) => {
         const fileIds = this.extractFileIds(data);
         if (fileIds.length > 0) {
           result.fileRecords = await this.getFileRecords(fileIds);
-          strapi.log.info(`[MediaSync] 📦 Prepared ${result.fileRecords.length} file records for push`);
+          
+          // 3. Transform URLs in file records from MinIO to OSS
+          // This ensures master receives OSS URLs directly
+          result.fileRecords = result.fileRecords.map((fileRecord: any) => {
+            const transformedRecord = { ...fileRecord };
+            // Transform main URL
+            if (fileRecord.url) {
+              transformedRecord.url = this.minioUrlToOssUrl(fileRecord.url);
+            }
+            // Transform preview URL
+            if (fileRecord.previewUrl) {
+              transformedRecord.previewUrl = this.minioUrlToOssUrl(fileRecord.previewUrl);
+            }
+            // Transform formats URLs
+            if (fileRecord.formats && typeof fileRecord.formats === 'object') {
+              transformedRecord.formats = {};
+              for (const [key, format] of Object.entries(fileRecord.formats)) {
+                const f = format as any;
+                transformedRecord.formats[key] = {
+                  ...f,
+                  url: f.url ? this.minioUrlToOssUrl(f.url) : f.url,
+                };
+              }
+            }
+            return transformedRecord;
+          });
+          
+          strapi.log.info(`[MediaSync] 📦 Prepared ${result.fileRecords.length} file records for push (URLs transformed to OSS)`);
         }
 
         return result;

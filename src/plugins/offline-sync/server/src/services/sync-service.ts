@@ -42,6 +42,11 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
                 if (mediaPrep.fileSyncResult.failed > 0) {
                   strapi.log.warn(`[Push] ${mediaPrep.fileSyncResult.failed} media files failed to sync to OSS`);
                 }
+
+                // Transform URLs from MinIO to OSS in content data BEFORE sending to master
+                // This ensures master receives OSS URLs, not localhost:9000 URLs
+                operationData = mediaSync.transformToMaster(operationData);
+                strapi.log.debug(`[Push] Transformed media URLs from MinIO to OSS`);
               } catch (mediaPrepError: any) {
                 strapi.log.warn(`[Push] Media preparation failed: ${mediaPrepError.message}`);
                 // Continue without media - content might still sync
