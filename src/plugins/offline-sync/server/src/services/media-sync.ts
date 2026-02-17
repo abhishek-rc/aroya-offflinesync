@@ -122,7 +122,7 @@ export default ({ strapi }: { strapi: any }) => {
   /**
    * Initialize MinIO clients
    */
-  const initClients = (): boolean => {
+  const initClients = async (): Promise<boolean> => {
     const config = getMediaConfig();
     if (!config) {
       return false;
@@ -517,7 +517,7 @@ export default ({ strapi }: { strapi: any }) => {
       strapi.log.info('[MediaSync] Initializing media sync service...');
 
       // Initialize clients
-      if (!initClients()) {
+      if (!(await initClients())) {
         strapi.log.warn('[MediaSync] Failed to initialize clients');
         return;
       }
