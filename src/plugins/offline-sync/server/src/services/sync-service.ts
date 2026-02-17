@@ -34,22 +34,53 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
 
             // If media sync is enabled, prepare media files for push
             // This uploads files from MinIO to OSS and collects file records
-            if (mediaSync.isEnabled() && operationData && operation.operation !== 'delete') {
+            const mediaSyncEnabled = mediaSync.isEnabled();
+            strapi.log.info(`[Push] Media sync enabled: ${mediaSyncEnabled}, operation: ${operation.operation}, hasData: ${!!operationData}`);
+            
+            if (mediaSyncEnabled && operationData && operation.operation !== 'delete') {
               try {
+                // Ensure we have full document data with populated media fields
+                // The queued data might not have media URLs populated
+                try {
+                  const fullDocument = await strapi.documents(operation.contentType).findOne({
+                    documentId: operation.contentId,
+                    populate: '*', // Populate all relations including media
+                  });
+                  if (fullDocument) {
+                    // Merge full document data with queued data (full document takes precedence)
+                    operationData = { ...operationData, ...fullDocument };
+                    strapi.log.debug(`[Push] Fetched full document with populated media for ${operation.contentType}:${operation.contentId}`);
+                  }
+                } catch (fetchError: any) {
+                  strapi.log.warn(`[Push] Could not fetch full document for media sync: ${fetchError.message} - using queued data`);
+                }
+
+                strapi.log.info(`[Push] 🔄 Starting media preparation for ${operation.contentType}...`);
                 const mediaPrep = await mediaSync.prepareContentForMasterPush(operationData);
                 fileRecords = mediaPrep.fileRecords;
 
+                strapi.log.info(`[Push] Media prep completed: ${mediaPrep.fileSyncResult.synced} synced, ${mediaPrep.fileSyncResult.failed} failed, ${fileRecords.length} file records`);
+
                 if (mediaPrep.fileSyncResult.failed > 0) {
-                  strapi.log.warn(`[Push] ${mediaPrep.fileSyncResult.failed} media files failed to sync to OSS`);
+                  strapi.log.warn(`[Push] ⚠️ ${mediaPrep.fileSyncResult.failed} media files failed to sync to OSS`);
+                }
+
+                if (mediaPrep.fileSyncResult.synced === 0 && mediaPrep.fileSyncResult.failed === 0) {
+                  strapi.log.warn(`[Push] ⚠️ No files were synced to OSS - check if content contains media URLs`);
                 }
 
                 // Transform URLs from MinIO to OSS in content data BEFORE sending to master
                 // This ensures master receives OSS URLs, not localhost:9000 URLs
                 operationData = mediaSync.transformToMaster(operationData);
-                strapi.log.debug(`[Push] Transformed media URLs from MinIO to OSS`);
+                strapi.log.info(`[Push] ✅ Transformed media URLs from MinIO to OSS`);
               } catch (mediaPrepError: any) {
-                strapi.log.warn(`[Push] Media preparation failed: ${mediaPrepError.message}`);
+                strapi.log.error(`[Push] ❌ Media preparation failed: ${mediaPrepError.message}`);
+                strapi.log.error(`[Push] Error stack: ${mediaPrepError.stack}`);
                 // Continue without media - content might still sync
+              }
+            } else {
+              if (!mediaSyncEnabled) {
+                strapi.log.debug(`[Push] Media sync disabled - skipping media preparation`);
               }
             }
 

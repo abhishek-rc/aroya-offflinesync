@@ -156,15 +156,30 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       // Initialize local MinIO client
+      strapi.log.debug(`[MediaSync] MinIO config check: endPoint=${config.minio.endPoint}, accessKey=${config.minio.accessKey ? '***' : 'missing'}, port=${config.minio.port}`);
+      
       if (config.minio.endPoint && config.minio.accessKey) {
-        minioClient = new MinioClient({
-          endPoint: config.minio.endPoint.replace(/^https?:\/\//, ''),
-          port: config.minio.port,
-          useSSL: config.minio.useSSL,
-          accessKey: config.minio.accessKey,
-          secretKey: config.minio.secretKey,
-        });
-        strapi.log.info('[MediaSync] MinIO client initialized');
+        try {
+          const minioEndpoint = config.minio.endPoint.replace(/^https?:\/\//, '');
+          minioClient = new MinioClient({
+            endPoint: minioEndpoint,
+            port: config.minio.port,
+            useSSL: config.minio.useSSL,
+            accessKey: config.minio.accessKey,
+            secretKey: config.minio.secretKey,
+          });
+          strapi.log.info(`[MediaSync] ✅ MinIO client initialized`);
+          strapi.log.info(`[MediaSync]   Endpoint: ${minioEndpoint}:${config.minio.port}`);
+          strapi.log.info(`[MediaSync]   Bucket: ${config.minio.bucket}`);
+          strapi.log.info(`[MediaSync]   Base URL: ${config.minio.baseUrl}`);
+        } catch (minioError: any) {
+          strapi.log.error(`[MediaSync] Failed to create MinIO client: ${minioError.message}`);
+        }
+      } else {
+        strapi.log.warn(`[MediaSync] ⚠️ MinIO client not initialized - missing config`);
+        strapi.log.warn(`[MediaSync]   endPoint: ${config.minio.endPoint || 'MISSING'}`);
+        strapi.log.warn(`[MediaSync]   accessKey: ${config.minio.accessKey ? 'SET' : 'MISSING'}`);
+        strapi.log.warn(`[MediaSync]   port: ${config.minio.port}`);
       }
 
       return true;
@@ -1306,12 +1321,21 @@ export default ({ strapi }: { strapi: any }) => {
 
       try {
         strapi.log.info('[MediaSync] 🔄 Preparing content for master push...');
-        strapi.log.debug(`[MediaSync] Content data keys: ${Object.keys(data || {}).join(', ')}`);
+        strapi.log.info(`[MediaSync] Content data keys: ${Object.keys(data || {}).join(', ')}`);
+        
+        // Log a sample of the data to see structure
+        const dataSample = JSON.stringify(data, null, 2).substring(0, 1000);
+        strapi.log.debug(`[MediaSync] Content data sample: ${dataSample}...`);
         
         // 1. Sync media files from MinIO to OSS
+        strapi.log.info('[MediaSync] Starting syncContentMediaToOss...');
         result.fileSyncResult = await this.syncContentMediaToOss(data);
         
-        strapi.log.info(`[MediaSync] Media sync result: ${result.fileSyncResult.synced} synced, ${result.fileSyncResult.failed} failed`);
+        strapi.log.info(`[MediaSync] ✅ Media sync result: ${result.fileSyncResult.synced} synced, ${result.fileSyncResult.failed} failed`);
+        
+        if (result.fileSyncResult.synced === 0 && result.fileSyncResult.failed === 0) {
+          strapi.log.warn('[MediaSync] ⚠️ No files were processed - check if content contains MinIO URLs');
+        }
 
         // 2. Extract file IDs and get their records
         const fileIds = this.extractFileIds(data);
