@@ -348,10 +348,16 @@ export default ({ strapi }: { strapi: any }) => {
 
     // Initialize Media Sync (OSS → MinIO) if enabled
     const mediaSync = strapi.plugin('offline-sync').service('media-sync');
-    if (mediaSync.isEnabled()) {
-      strapi.log.info('[OfflineSync] 🖼️ Media sync enabled');
-      mediaSync.initialize().catch((error: any) => {
-        strapi.log.warn(`[OfflineSync] Media sync initialization deferred: ${error.message}`);
+    const mediaSyncEnabled = mediaSync.isEnabled();
+    strapi.log.info(`[OfflineSync] Media sync check: enabled=${mediaSyncEnabled}, SYNC_MODE=${pluginConfig.mode}`);
+    
+    if (mediaSyncEnabled) {
+      strapi.log.info('[OfflineSync] 🖼️ Media sync enabled - initializing...');
+      mediaSync.initialize().then(() => {
+        strapi.log.info('[OfflineSync] ✅ Media sync initialization completed');
+      }).catch((error: any) => {
+        strapi.log.error(`[OfflineSync] ❌ Media sync initialization failed: ${error.message}`);
+        strapi.log.error(`[OfflineSync] Error stack: ${error.stack}`);
       });
 
       // Add media sync shutdown to cleanup

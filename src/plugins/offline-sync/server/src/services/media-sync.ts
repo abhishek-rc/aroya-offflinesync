@@ -156,30 +156,54 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       // Initialize local MinIO client
-      strapi.log.debug(`[MediaSync] MinIO config check: endPoint=${config.minio.endPoint}, accessKey=${config.minio.accessKey ? '***' : 'missing'}, port=${config.minio.port}`);
+      strapi.log.info(`[MediaSync] Checking MinIO configuration...`);
+      strapi.log.info(`[MediaSync]   endPoint: ${config.minio.endPoint || 'MISSING'}`);
+      strapi.log.info(`[MediaSync]   port: ${config.minio.port || 'MISSING'}`);
+      strapi.log.info(`[MediaSync]   accessKey: ${config.minio.accessKey ? 'SET' : 'MISSING'}`);
+      strapi.log.info(`[MediaSync]   secretKey: ${config.minio.secretKey ? 'SET' : 'MISSING'}`);
+      strapi.log.info(`[MediaSync]   bucket: ${config.minio.bucket || 'MISSING'}`);
+      strapi.log.info(`[MediaSync]   baseUrl: ${config.minio.baseUrl || 'MISSING'}`);
       
       if (config.minio.endPoint && config.minio.accessKey) {
         try {
           const minioEndpoint = config.minio.endPoint.replace(/^https?:\/\//, '');
+          strapi.log.info(`[MediaSync] Creating MinIO client with endpoint: ${minioEndpoint}:${config.minio.port}`);
+          
           minioClient = new MinioClient({
             endPoint: minioEndpoint,
             port: config.minio.port,
-            useSSL: config.minio.useSSL,
+            useSSL: config.minio.useSSL || false,
             accessKey: config.minio.accessKey,
             secretKey: config.minio.secretKey,
           });
-          strapi.log.info(`[MediaSync] ✅ MinIO client initialized`);
+          
+          strapi.log.info(`[MediaSync] ✅ MinIO client created successfully`);
+          
+          // Test connection by checking if bucket exists
+          try {
+            const bucketExists = await minioClient.bucketExists(config.minio.bucket);
+            if (bucketExists) {
+              strapi.log.info(`[MediaSync] ✅ MinIO bucket '${config.minio.bucket}' exists`);
+            } else {
+              strapi.log.warn(`[MediaSync] ⚠️ MinIO bucket '${config.minio.bucket}' does not exist - will be created on first use`);
+            }
+          } catch (bucketError: any) {
+            strapi.log.error(`[MediaSync] ❌ Failed to check MinIO bucket: ${bucketError.message}`);
+            strapi.log.error(`[MediaSync] Make sure MinIO is running at ${minioEndpoint}:${config.minio.port}`);
+          }
+          
           strapi.log.info(`[MediaSync]   Endpoint: ${minioEndpoint}:${config.minio.port}`);
           strapi.log.info(`[MediaSync]   Bucket: ${config.minio.bucket}`);
           strapi.log.info(`[MediaSync]   Base URL: ${config.minio.baseUrl}`);
         } catch (minioError: any) {
-          strapi.log.error(`[MediaSync] Failed to create MinIO client: ${minioError.message}`);
+          strapi.log.error(`[MediaSync] ❌ Failed to create MinIO client: ${minioError.message}`);
+          strapi.log.error(`[MediaSync] Error stack: ${minioError.stack}`);
         }
       } else {
-        strapi.log.warn(`[MediaSync] ⚠️ MinIO client not initialized - missing config`);
-        strapi.log.warn(`[MediaSync]   endPoint: ${config.minio.endPoint || 'MISSING'}`);
-        strapi.log.warn(`[MediaSync]   accessKey: ${config.minio.accessKey ? 'SET' : 'MISSING'}`);
-        strapi.log.warn(`[MediaSync]   port: ${config.minio.port}`);
+        strapi.log.error(`[MediaSync] ❌ MinIO client not initialized - missing required config`);
+        strapi.log.error(`[MediaSync]   endPoint: ${config.minio.endPoint || 'MISSING'}`);
+        strapi.log.error(`[MediaSync]   accessKey: ${config.minio.accessKey ? 'SET' : 'MISSING'}`);
+        strapi.log.error(`[MediaSync]   port: ${config.minio.port || 'MISSING'}`);
       }
 
       return true;
@@ -473,7 +497,11 @@ export default ({ strapi }: { strapi: any }) => {
      */
     isEnabled(): boolean {
       const config = getMediaConfig();
-      return config?.enabled === true;
+      const enabled = config?.enabled === true;
+      if (!enabled) {
+        strapi.log.debug(`[MediaSync] Media sync disabled - config.enabled=${config?.enabled}, SYNC_MODE=${process.env.SYNC_MODE || 'not set'}`);
+      }
+      return enabled;
     },
 
     /**
