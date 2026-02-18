@@ -311,8 +311,8 @@ export default ({ strapi }: { strapi: any }) => {
     const startTime = Date.now();
     let processed = 0;
     let listed = 0;
-    const BATCH_SIZE = 20; // Process 20 files in parallel
-    const CONCURRENT_BATCHES = 5; // 5 batches = 100 files concurrently
+    const BATCH_SIZE = 5; // Process 5 files in parallel
+    const CONCURRENT_BATCHES = 2; // 2 batches = 10 files concurrently
 
     try {
       strapi.log.info('[MediaSync] Starting media sync from OSS to MinIO...');
