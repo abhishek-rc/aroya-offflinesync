@@ -20,6 +20,7 @@
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "strapi": "strapi",
+    "sync:media": "node ./scripts/sync-media.js",
     "upload:images": "node ./scripts/upload-images.js",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry"

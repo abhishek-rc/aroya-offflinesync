@@ -13,10 +13,7 @@ import { Client as MinioClient } from 'minio';
 interface MediaConfig {
   enabled: boolean;
   transformUrls: boolean;
-  syncOnStartup: boolean;
-  syncInterval: number;
   maxFilesPerSync?: number; // Limit files per sync run (for large buckets, 0 = unlimited)
-  disableFullSync?: boolean; // If true, only use on-demand sync (no periodic full sync)
   batchSize?: number; // Files per batch (default: 2)
   batchDelay?: number; // Delay between batches in ms (default: 500)
   oss: {
@@ -89,10 +86,7 @@ export default ({ strapi }: { strapi: any }) => {
     return {
       enabled: config.media.enabled,
       transformUrls: config.media.transformUrls !== false,
-      syncOnStartup: config.media.syncOnStartup !== false,
-      syncInterval: config.media.syncInterval || 300000, // 5 minutes default
       maxFilesPerSync: config.media.maxFilesPerSync || 0, // 0 = unlimited
-      disableFullSync: config.media.disableFullSync === true, // Default: false (allow full sync)
       batchSize: config.media.batchSize || 2, // Files per batch
       batchDelay: config.media.batchDelay || 500, // Delay between batches in ms
       oss: {
@@ -560,24 +554,7 @@ export default ({ strapi }: { strapi: any }) => {
       // Ensure bucket exists
       await ensureBucket();
 
-      // Run initial sync if configured (skip if disabled for large buckets)
-      if (config.syncOnStartup && !config.disableFullSync) {
-        strapi.log.info('[MediaSync] Running initial sync...');
-        // Run async to not block startup
-        setImmediate(() => this.sync());
-      } else if (config.disableFullSync) {
-        strapi.log.info('[MediaSync] Full sync disabled - using on-demand sync only');
-      }
-
-      // Start periodic sync (skip if disabled for large buckets)
-      if (config.syncInterval > 0 && !config.disableFullSync) {
-        syncIntervalId = setInterval(() => {
-          this.sync();
-        }, config.syncInterval);
-        strapi.log.info(`[MediaSync] Periodic sync enabled (interval: ${config.syncInterval / 1000}s)`);
-      } else if (config.disableFullSync) {
-        strapi.log.info('[MediaSync] Periodic sync disabled - using on-demand sync only');
-      }
+      strapi.log.info('[MediaSync] Ready (on-demand sync only, use npm run sync:media for full sync)');
     },
 
     /**

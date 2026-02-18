@@ -43,15 +43,11 @@ export default ({ env }) => ({
       contentTypes: env('SYNC_CONTENT_TYPES', '').split(',').filter(Boolean),
 
       // Media sync configuration (OSS → MinIO) - Only active on replica!
+      // Full sync: run `npm run sync:media` once to download all files from OSS to MinIO
+      // After that, on-demand sync handles new files automatically when content arrives
       media: {
         enabled: env('SYNC_MODE', 'replica') === 'replica',  // Auto-enable only on replica
         transformUrls: true,
-        syncOnStartup: env.bool('MEDIA_SYNC_ON_STARTUP', true), // Set false for large buckets (12k+ files)
-        syncInterval: env.int('MEDIA_SYNC_INTERVAL', 300000), // 5 minutes (set 0 to disable periodic sync)
-        maxFilesPerSync: env.int('MEDIA_MAX_FILES_PER_SYNC', 0), // 0 = unlimited, set limit for large buckets
-        disableFullSync: env.bool('MEDIA_DISABLE_FULL_SYNC', false), // If true, only on-demand sync (recommended for 10k+ files)
-        batchSize: env.int('MEDIA_BATCH_SIZE', 2), // Files per batch (default: 2, very conservative for OSS)
-        batchDelay: env.int('MEDIA_BATCH_DELAY_MS', 500), // Delay between batches in ms (default: 500ms = ~4 files/sec)
 
         // OSS (Master) configuration
         oss: {
