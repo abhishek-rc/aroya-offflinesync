@@ -17,6 +17,8 @@ interface MediaConfig {
   syncInterval: number;
   maxFilesPerSync?: number; // Limit files per sync run (for large buckets, 0 = unlimited)
   disableFullSync?: boolean; // If true, only use on-demand sync (no periodic full sync)
+  batchSize?: number; // Files per batch (default: 2)
+  batchDelay?: number; // Delay between batches in ms (default: 500)
   oss: {
     endPoint: string;
     port: number;
@@ -91,6 +93,8 @@ export default ({ strapi }: { strapi: any }) => {
       syncInterval: config.media.syncInterval || 300000, // 5 minutes default
       maxFilesPerSync: config.media.maxFilesPerSync || 0, // 0 = unlimited
       disableFullSync: config.media.disableFullSync === true, // Default: false (allow full sync)
+      batchSize: config.media.batchSize || 2, // Files per batch
+      batchDelay: config.media.batchDelay || 500, // Delay between batches in ms
       oss: {
         endPoint: config.media.oss?.endPoint || '',
         port: config.media.oss?.port || 443,
@@ -253,13 +257,17 @@ export default ({ strapi }: { strapi: any }) => {
   };
 
   /**
-   * Sync a single file from OSS to MinIO
+   * Sync a single file from OSS to MinIO with retry logic for rate limiting
    */
-  const syncFile = async (objectName: string): Promise<boolean> => {
+  const syncFile = async (objectName: string, retryCount: number = 0): Promise<boolean> => {
     const config = getMediaConfig();
     if (!config || !ossClient || !minioClient) {
       return false;
     }
+
+    const MAX_RETRIES = 5;
+    const INITIAL_RETRY_DELAY = 1000; // 1 second
+    const MAX_RETRY_DELAY = 30000; // 30 seconds
 
     try {
       // Get file from OSS
@@ -282,6 +290,25 @@ export default ({ strapi }: { strapi: any }) => {
 
       return true;
     } catch (error: any) {
+      // Check if it's a rate limit error (503 or 429)
+      const isRateLimitError = error.code === 'ECONNRESET' || 
+                               error.message?.includes('503') || 
+                               error.message?.includes('429') ||
+                               error.message?.includes('Service Unavailable') ||
+                               error.message?.includes('Too Many Requests');
+
+      if (isRateLimitError && retryCount < MAX_RETRIES) {
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        const delay = Math.min(INITIAL_RETRY_DELAY * Math.pow(2, retryCount), MAX_RETRY_DELAY);
+        
+        strapi.log.debug(
+          `[MediaSync] Rate limited on ${objectName}, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return syncFile(objectName, retryCount + 1);
+      }
+
       strapi.log.debug(`[MediaSync] Failed to sync file ${objectName}: ${error.message}`);
       syncStats.filesFailed++;
       return false;
@@ -311,8 +338,10 @@ export default ({ strapi }: { strapi: any }) => {
     const startTime = Date.now();
     let processed = 0;
     let listed = 0;
-    const BATCH_SIZE = 5; // Process 5 files in parallel
-    const CONCURRENT_BATCHES = 2; // 2 batches = 10 files concurrently
+    // Reduced concurrency to avoid OSS rate limiting (configurable via env)
+    const BATCH_SIZE = config.batchSize || 2; // Process 2 files in parallel (default)
+    const CONCURRENT_BATCHES = 1; // 1 batch = BATCH_SIZE files concurrently (very conservative)
+    const BATCH_DELAY_MS = config.batchDelay || 500; // Delay between batches (default: 500ms = ~4 files/sec max)
 
     try {
       strapi.log.info('[MediaSync] Starting media sync from OSS to MinIO...');
@@ -414,8 +443,14 @@ export default ({ strapi }: { strapi: any }) => {
         // Wait for all batches in this group to complete
         await Promise.all(batchPromises);
 
-        // Log progress every 100 files
-        if (processed % 100 === 0) {
+        // Add delay between batch groups to avoid rate limiting
+        // Skip delay on last batch
+        if (i + BATCH_SIZE * CONCURRENT_BATCHES < objectsToProcess.length) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+        }
+
+        // Log progress every 50 files (more frequent for large syncs)
+        if (processed % 50 === 0 || processed === filesToProcess) {
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
           const rate = processed > 0 ? (processed / ((Date.now() - startTime) / 1000)).toFixed(1) : '0';
           strapi.log.info(
