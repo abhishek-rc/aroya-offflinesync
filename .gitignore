@@ -82,6 +82,9 @@ ssl
 nbproject
 public/uploads/*
 !public/uploads/.gitkeep
+
+# MinIO local storage (replica media files)
+src/plugins/offline-sync/docker/uploads/
 .tsbuildinfo
 .eslintcache
 
