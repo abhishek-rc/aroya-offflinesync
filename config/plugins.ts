@@ -103,7 +103,7 @@ export default ({ env }) => ({
               // MinIO (S3-compatible) - works offline on ship
               baseUrl: env('MINIO_BASE_URL', 'http://localhost:9000/media'),
               s3Options: {
-                endpoint: env('MINIO_ENDPOINT', 'http://localhost:9000'),
+                endpoint: `http://${env('MINIO_ENDPOINT', 'localhost')}:${env.int('MINIO_PORT', 9000)}`,
                 credentials: {
                   accessKeyId: env('MINIO_ACCESS_KEY', 'minioadmin'),
                   secretAccessKey: env('MINIO_SECRET_KEY', 'minioadmin123'),

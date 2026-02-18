@@ -166,7 +166,7 @@ export default ({ strapi }: { strapi: any }) => {
       
       if (config.minio.endPoint && config.minio.accessKey) {
         try {
-          const minioEndpoint = config.minio.endPoint.replace(/^https?:\/\//, '');
+          const minioEndpoint = config.minio.endPoint.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
           strapi.log.info(`[MediaSync] Creating MinIO client with endpoint: ${minioEndpoint}:${config.minio.port}`);
           
           minioClient = new MinioClient({
