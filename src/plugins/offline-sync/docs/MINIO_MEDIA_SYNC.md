@@ -47,28 +47,62 @@ This document describes the production-ready solution for serving media files (i
 ## How It Works
 
 1. **MinIO Server** runs as a Docker container on the ship
-2. **Strapi's offline-sync plugin** uses the `minio` npm package to:
-   - Connect to both OSS (source) and MinIO (destination)
-   - **On-demand sync**: Immediately download images when content is received
-   - **Periodic sync**: Background sync every 5 minutes (catches any missed files)
-   - Transform media URLs in content during sync
-3. **When offline**: Ship serves all media from local MinIO
-4. **When online**: Strapi syncs new files from OSS to MinIO
+2. **First-time bulk sync** is done via a standalone script (`npm run sync:media`) — run once when setting up a new replica to populate MinIO with all existing media from OSS
+3. **On-demand sync** is built into the plugin: when new content arrives via Kafka, referenced media files are automatically downloaded from OSS to MinIO
+4. **File record syncing**: Master includes `plugin::upload.file` metadata in Kafka messages (`fileRecords` field). Replica creates local file entries, enabling proper file relations
+5. **No periodic background sync** — only bulk (one-time) and on-demand (per message)
+6. **When offline**: Ship serves all media from local MinIO
+7. **When online**: New files sync on-demand as content arrives
 
-### On-Demand Sync (Production Feature)
+### On-Demand Sync (Built-in)
 
 When content with images is published on master:
 
 ```
 T+0s    Master publishes content + image to OSS
+        └── Master attaches fileRecords to Kafka message
 T+1s    Replica receives content via Kafka
+        └── processMasterFileRecords(): creates local upload entries
         └── On-demand sync: Downloads image from OSS → MinIO
         └── URL transformed: OSS → MinIO
-        └── Content saved with MinIO URL
+        └── Content saved with MinIO URL and local file relations
 T+1s    User sees content with image ✅ (no delay!)
 ```
 
 This ensures images are available **immediately** when content is received.
+
+### First-Time Bulk Sync (Standalone Script)
+
+For initial replica setup, run the standalone sync script to download all existing media:
+
+```bash
+npm run sync:media
+```
+
+CLI arguments:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--batch-size` | `50` | Number of files per batch |
+| `--batch-delay` | `1000` | Delay between batches in ms |
+| `--max-retries` | `3` | Max retries per file |
+| `--max-files` | `0` (unlimited) | Limit total files to sync |
+| `--dry-run` | `false` | Preview without downloading |
+
+Example:
+
+```bash
+# Dry run to see what would be synced
+npm run sync:media -- --dry-run
+
+# Sync with custom batch settings
+npm run sync:media -- --batch-size 100 --batch-delay 2000
+
+# Sync limited number of files
+npm run sync:media -- --max-files 500
+```
+
+The script runs `scripts/sync-media.js` which connects directly to OSS and MinIO without starting Strapi.
 
 ---
 
@@ -103,8 +137,9 @@ export default ({ env }) => ({
       media: {
         enabled: true,
         transformUrls: true,
-        syncOnStartup: true,
-        syncInterval: 300000, // 5 minutes
+        batchSize: 50,
+        batchDelay: 1000,
+        maxFilesPerSync: 0, // 0 = unlimited
         
         // OSS (Master) configuration
         oss: {
@@ -185,8 +220,9 @@ npm run develop
 |--------|------|---------|-------------|
 | `media.enabled` | boolean | `false` | Enable media sync |
 | `media.transformUrls` | boolean | `true` | Transform URLs in synced content |
-| `media.syncOnStartup` | boolean | `true` | Run sync when Strapi starts |
-| `media.syncInterval` | number | `300000` | Sync interval in ms (5 min) |
+| `media.batchSize` | number | `50` | Files per batch during bulk sync |
+| `media.batchDelay` | number | `1000` | Delay between batches in ms |
+| `media.maxFilesPerSync` | number | `0` | Max files per sync run (0 = unlimited) |
 | `media.oss.endPoint` | string | - | OSS endpoint (e.g., `oss-cn-hangzhou.aliyuncs.com`) |
 | `media.oss.bucket` | string | - | OSS bucket name |
 | `media.oss.baseUrl` | string | - | Full URL for OSS media |
@@ -232,20 +268,26 @@ https://your-bucket.oss-cn-hangzhou.aliyuncs.com/uploads/image.jpg
 
 ### On Startup
 1. Plugin checks if media sync is enabled
-2. Connects to both OSS and MinIO
+2. Initializes MinIO and OSS clients
 3. Creates MinIO bucket if not exists
-4. Starts initial sync (if `syncOnStartup: true`)
+4. **No automatic file sync** — only client initialization and bucket verification
 
-### Periodic Sync
-- Runs every `syncInterval` milliseconds
-- Compares files in OSS vs MinIO
-- Downloads only new/missing files
-- Skips files that already exist
+### On-Demand Sync (via Kafka)
+- Triggered when content arrives from master via Kafka
+- Downloads only the media files referenced by the incoming content
+- Creates local `plugin::upload.file` entries from master's `fileRecords`
+- Transforms URLs from OSS → MinIO in the content data
+
+### Bulk Sync (Standalone Script)
+- Run `npm run sync:media` for first-time setup or to catch up
+- Compares files in OSS vs MinIO, downloads only new/missing files
+- Runs outside of Strapi — no server restart needed
+- See [First-Time Bulk Sync](#first-time-bulk-sync-standalone-script) for details
 
 ### When Offline
-- Sync attempts fail silently (logged as debug)
+- On-demand sync attempts fail silently (logged via `strapi.log.error`)
 - Local MinIO continues serving cached media
-- Next sync happens when online
+- New files sync on-demand when connectivity is restored
 
 ---
 
@@ -275,6 +317,52 @@ const health = await mediaSync.getHealth();
 const replicaData = mediaSync.transformToReplica(masterData);
 const masterData = mediaSync.transformToMaster(replicaData);
 ```
+
+---
+
+## OSS-to-MinIO Path Mapping
+
+The `ossPathToMinioPath` helper strips the upload prefix when copying files from OSS to MinIO. OSS stores files under a configurable `uploadPath` prefix (e.g., `strapi-uploads/`), but MinIO stores them at the root of the bucket.
+
+```
+OSS path:    uploads/image.jpg    →  MinIO path: image.jpg
+OSS path:    strapi-uploads/photo.png  →  MinIO path: photo.png
+```
+
+This ensures MinIO URLs stay clean and the `baseUrl` configuration works without path duplication.
+
+---
+
+## File Record Syncing
+
+When the master publishes content that references media files, it includes `plugin::upload.file` records in the Kafka message under the `fileRecords` field. On the replica side:
+
+1. **Master** calls `getFileRecords(fileIds)` to fetch full file metadata (name, hash, ext, mime, size, url, etc.)
+2. **Master** attaches the result as `fileRecords` in the `SyncMessage`
+3. **Replica** receives the message and calls `processMasterFileRecords(fileRecords)` to:
+   - Create local `plugin::upload.file` entries in the replica database
+   - Build an ID map (master file ID → replica file ID)
+4. **Replica** calls `updateContentFileIds(data, idMap)` to rewrite file references in the content so they point to the newly created local entries
+
+This enables proper file relations on the replica without requiring the replica to re-upload files through Strapi's upload service.
+
+---
+
+## Making MinIO Bucket Public
+
+By default, the MinIO bucket requires authentication to access objects. For Strapi to serve media directly, the bucket must be publicly readable.
+
+### Option 1: Via MinIO CLI (mc)
+
+```bash
+docker exec ship-minio sh -c "mc alias set local http://localhost:9000 minioadmin minioadmin123 && mc anonymous set download local/media"
+```
+
+### Option 2: Via MinIO Console
+
+1. Open http://localhost:9001
+2. Go to **Administrator** → **Buckets** → **media**
+3. Set **Access Policy** to **Public**
 
 ---
 
@@ -323,6 +411,36 @@ docker-compose -f docker-compose.minio.yml restart
    const health = await strapi.plugin('offline-sync').service('media-sync').getHealth();
    console.log(health);
    ```
+
+### IPv6 Localhost Issues
+
+If MinIO connections fail on some systems, `localhost` may resolve to `::1` (IPv6). Use the explicit IPv4 address instead:
+
+```env
+MINIO_ENDPOINT=127.0.0.1
+MINIO_BASE_URL=http://127.0.0.1:9000/media
+```
+
+### Development Server Restarts
+
+MinIO writes to the `public/uploads` directory can trigger Strapi's file watcher, causing repeated restarts. Add `watchIgnoreFiles` to your admin config:
+
+```typescript
+// config/admin.ts
+export default ({ env }) => ({
+  watchIgnoreFiles: [
+    '**/public/uploads/**',
+  ],
+});
+```
+
+### Heap Out of Memory
+
+Large bulk syncs may exceed Node's default memory limit. Increase it with:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=4096 npm run sync:media
+```
 
 ### Images Not Loading
 
@@ -403,4 +521,4 @@ docker run --rm \
 | Works Offline | N/A | ✅ Yes |
 | URL Transform | ✅ (MinIO→OSS) | ✅ (OSS→MinIO) |
 
-The media sync solution ensures ships can display all images and videos even when completely offline, with automatic sync when connectivity is restored.
+The media sync solution ensures ships can display all images and videos even when completely offline, with on-demand sync when new content arrives via Kafka.

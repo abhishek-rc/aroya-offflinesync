@@ -1,7 +1,7 @@
 # 🎯 Master Setup Summary (For Your Reference)
 
-**Last Updated:** January 2026  
-**Version:** 1.2
+**Last Updated:** February 2026  
+**Version:** 1.3
 
 Quick reference for setting up your system as Master.
 
@@ -262,6 +262,34 @@ npm run develop
 
 ---
 
+## 🖼️ Media Sync Setup (Optional)
+
+If your deployment requires media file synchronization (images, documents, etc.) between master and ship replicas:
+
+### Master-Side Requirements
+
+1. **OSS Credentials:** Ensure your `.env` includes the OSS credentials used for media storage:
+   ```env
+   # OSS Configuration (for media sync)
+   OSS_ACCESS_KEY_ID=your-oss-access-key
+   OSS_ACCESS_KEY_SECRET=your-oss-secret-key
+   OSS_BUCKET=your-bucket-name
+   OSS_REGION=your-oss-region
+   OSS_ENDPOINT=your-oss-endpoint
+   ```
+
+2. **File Records in Kafka:** The master automatically includes `plugin::upload.file` records in Kafka messages when content with media references is synced. No additional configuration is needed on the master side.
+
+### Replica-Side Bulk Sync
+
+For first-time media synchronization on a new replica, the replica operator runs:
+```bash
+npm run sync:media
+```
+This executes `scripts/sync-media.js` and downloads all existing media files from OSS to the replica's local MinIO instance. See the **Replica Setup Guide** for full MinIO setup instructions.
+
+---
+
 ## ✅ Verification
 
 ### Check Kafka is Accessible
@@ -285,6 +313,12 @@ You should see:
 You should see:
 - `[Sync] 🌐 Adding new locale ar to existing api::article.article`
 - `[Sync] ✅ Updated api::article.article [ar] (master: xyz123)`
+
+### When Media Sync is Active (if configured)
+You should see on the **replica** side:
+- `[MediaSync] ✅ Downloaded file.jpg from OSS to MinIO`
+- `[MediaSync] ✅ Bulk sync complete: X files downloaded`
+- `[MediaSync] File record created for plugin::upload.file`
 
 ---
 

@@ -4,8 +4,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.2 |
-| **Last Updated** | January 2026 |
+| **Version** | 1.3 |
+| **Last Updated** | February 2026 |
 | **Status** | Approved |
 | **Author** | Development Team |
 
@@ -273,6 +273,10 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 │  │   Sync Queue    │  │ Connectivity    │  │ Version Manager │             │
 │  │   (Replica)     │  │ Monitor         │  │                 │             │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│  ┌─────────────────┐                                                       │
+│  │ Media Sync      │  OSS-to-MinIO sync, URL transformation,              │
+│  │ Service         │  file record processing                              │
+│  └─────────────────┘                                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -280,6 +284,15 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 │                           INTEGRATION LAYER                                  │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
 │  │        Kafka Producer           │  │        Kafka Consumer           │  │
+│  └─────────────────────────────────┘  └─────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MEDIA/STORAGE LAYER                                 │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
+│  │        MinIO                    │  │     Alibaba Cloud OSS           │  │
+│  │   (replica file storage)       │  │   (master file storage)         │  │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -311,8 +324,11 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 | **Application** | Version Manager | Track document versions |
 | **Application** | Master Sync Queue | Queue master changes when Kafka offline (master) |
 | **Application** | Master Edit Log | Track direct admin edits for conflict attribution (master) |
+| **Application** | Media Sync Service | OSS-to-MinIO media sync, URL transformation, file record processing |
 | **Integration** | Kafka Producer | Send messages to topics |
 | **Integration** | Kafka Consumer | Receive messages from topics |
+| **Media/Storage** | MinIO | Replica file storage (media assets) |
+| **Media/Storage** | Alibaba Cloud OSS | Master file storage (media assets) |
 | **Data** | PostgreSQL | Persistent storage |
 | **Data** | Strapi Content Types | Managed entities |
 
@@ -359,6 +375,14 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│  MEDIA STORAGE                                                               │
+│  ┌─────────────┐  ┌─────────────┐                                          │
+│  │ MinIO       │  │ Alibaba     │  OSS (master) ↔ MinIO (replica)         │
+│  │ (replica)   │  │ Cloud OSS   │                                          │
+│  └─────────────┘  └─────────────┘                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
 │  INFRASTRUCTURE                                                              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                         │
 │  │ Docker      │  │ Kubernetes  │  │ Prometheus  │                         │
@@ -377,6 +401,8 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 | **KafkaJS** | Native Node.js Kafka client, no Java dependencies |
 | **PostgreSQL** | Robust, ACID-compliant, JSONB support |
 | **Docker** | Consistent deployment across environments |
+| **MinIO** | S3-compatible object storage for replica media files |
+| **Alibaba Cloud OSS** | Cloud object storage for master media files |
 
 ---
 
@@ -569,7 +595,7 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 | **Data at Rest** | Database encryption |
 | **Authentication** | Kafka SASL, API tokens |
 | **Authorization** | Role-based access (future) |
-| **Sensitive Data** | Automatic stripping before sync |
+| **Sensitive Data** | Sensitive keys omitted entirely before sync |
 | **Audit Trail** | Conflict resolution logging |
 
 ### 9.5 Reliability
@@ -615,10 +641,11 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 
 | Phase | Features | Timeline |
 |-------|----------|----------|
-| **v1.0** (Current) | Bi-directional sync, conflict resolution | ✅ Complete |
-| **v1.1** | API authentication, auto-retry dead letters | Q1 2025 |
-| **v1.2** | Admin UI for conflict resolution | Q2 2025 |
-| **v2.0** | Multi-master support, selective sync | Q3 2025 |
+| **v1.0** | Bi-directional sync, conflict resolution | ✅ Complete |
+| **v1.1** | Connectivity monitor, sync queue, version manager | ✅ Complete |
+| **v1.2** | Full i18n/locale support, master edit log, master sync queue | ✅ Complete |
+| **v1.3** (Current) | Media sync (OSS-to-MinIO), file record syncing, production logging | ✅ Complete |
+| **v2.0** | Multi-master support, selective sync | Future |
 
 ### 11.2 Potential Enhancements
 
@@ -637,13 +664,30 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 |------|----------|--------|
 | Add API authentication to routes | High | Low |
 | Implement sync loop prevention | Medium | Low |
-| Add structured logging | Low | Medium |
+| ~~Add structured logging~~ | ~~Low~~ | ~~Done in v1.3~~ |
 | Create admin UI for conflicts | Medium | High |
 | Add comprehensive test suite | Medium | High |
 
 ---
 
 ## Changelog
+
+### Version 1.3 (February 2026)
+
+**Updates:**
+- ✅ Added **Media Sync Architecture** - OSS-to-MinIO sync with standalone bulk script (`npm run sync:media`)
+- ✅ Added **File Record Syncing** - Master includes `plugin::upload.file` records via `fileRecords` field in Kafka messages
+- ✅ Added **OSS-to-MinIO Path Mapping** - `ossPathToMinioPath` helper strips `uploads/` prefix for correct MinIO storage
+- ✅ Updated **Sensitive Data Handling** - `stripSensitiveData` now omits keys entirely instead of replacing with `[REDACTED]`
+- ✅ Completed **Legacy Code Cleanup** - removed dead code in `server/controllers/`, `server/services/`, `server/bootstrap.ts`
+- ✅ Added **Production Logging** - all `console.error` replaced with `strapi.log.error`
+- ✅ Added **watchIgnoreFiles** in admin config to prevent restarts from MinIO writes
+
+**Key Changes:**
+- First-time bulk media sync moved to standalone script; on-demand sync remains built-in for Kafka-delivered content
+- Replicas create local `plugin::upload.file` entries from master-provided file records
+- Sensitive data fields are omitted from sync payloads rather than replaced with placeholder strings
+- All legacy service files under `server/` (superseded by `server/src/`) removed
 
 ### Version 1.2 (January 2026)
 
@@ -696,6 +740,10 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 | **Locale** | Language-specific version of content (e.g., EN, AR) |
 | **i18n** | Internationalization - multi-language content support |
 | **New Locale** | A locale that doesn't exist on master for a given document |
+| **MinIO** | S3-compatible object storage used on replicas for media files |
+| **OSS** | Alibaba Cloud Object Storage Service used on master for media files |
+| **File Record** | A `plugin::upload.file` entry representing an uploaded media asset |
+| **Media Sync** | Process of synchronizing media files from OSS (master) to MinIO (replica) |
 
 ---
 
@@ -706,6 +754,7 @@ The solution implements an **Event-Driven Architecture** using Apache Kafka as t
 | `LOW_LEVEL_DESIGN.md` | Detailed technical design |
 | `README.md` | Plugin usage documentation |
 | `database/README.md` | Database setup instructions |
+| `MINIO_MEDIA_SYNC.md` | Media sync architecture and setup |
 | Strapi Documentation | https://docs.strapi.io |
 | Apache Kafka Documentation | https://kafka.apache.org/documentation |
 

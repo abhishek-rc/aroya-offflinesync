@@ -4,8 +4,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.2 |
-| **Last Updated** | January 2026 |
+| **Version** | 1.3 |
+| **Last Updated** | February 2026 |
 | **Platform** | Strapi 5.x |
 | **Message Broker** | Apache Kafka |
 | **Database** | PostgreSQL |
@@ -161,12 +161,12 @@ The Offline Sync Plugin enables bi-directional data synchronization between a ce
 │  │  │ - markPushed() │  │ - markOffline()│  │ - markResolved │          │    │
 │  │  └────────────────┘  └────────────────┘  └────────────────┘          │    │
 │  │                                                                       │    │
-│  │  ┌────────────────┐  ┌────────────────┐                              │    │
-│  │  │Connectivity Mon│  │Version Manager │                              │    │
-│  │  │                │  │                │                              │    │
-│  │  │ - startMonitor │  │ - getVersion() │                              │    │
-│  │  │ - checkConnect │  │ - increment()  │                              │    │
-│  │  └────────────────┘  └────────────────┘                              │    │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐          │    │
+│  │  │Connectivity Mon│  │Version Manager │  │  Media Sync    │          │    │
+│  │  │                │  │                │  │                │          │    │
+│  │  │ - startMonitor │  │ - getVersion() │  │ - syncFile()   │          │    │
+│  │  │ - checkConnect │  │ - increment()  │  │ - syncContent  │          │    │
+│  │  └────────────────┘  └────────────────┘  └────────────────┘          │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
@@ -483,6 +483,71 @@ interface MasterSyncQueue {
 }
 ```
 
+#### 3.1.13 Media Sync Service (`media-sync.ts`) - Replica Only
+
+**Responsibility:** Sync media files from OSS (master storage) to local MinIO, transform URLs in content, and manage file record entries for proper media relations.
+
+```typescript
+interface MediaSyncService {
+  // Initialize MinIO/OSS clients and ensure bucket exists
+  initialize(): Promise<void>;
+
+  // Check if media sync is enabled in config
+  isEnabled(): boolean;
+
+  // Sync a single file from OSS to MinIO
+  syncFile(ossKey: string): Promise<boolean>;
+
+  // Bulk sync all files from OSS to MinIO (used by standalone script)
+  syncAllFiles(options?: {
+    batchSize?: number;
+    batchDelay?: number;
+    maxFiles?: number;
+    dryRun?: boolean;
+  }): Promise<{ downloaded: number; skipped: number; failed: number }>;
+
+  // On-demand sync: download media referenced by incoming content
+  syncContentMedia(data: object): Promise<void>;
+
+  // Transform media URLs from OSS → MinIO (master → replica)
+  transformToReplica(data: object): object;
+
+  // Transform media URLs from MinIO → OSS (replica → master)
+  transformToMaster(data: object): object;
+
+  // Extract file IDs from content data
+  extractFileIds(data: object): number[];
+
+  // Get file records for content (master: attach to Kafka message)
+  getFileRecords(fileIds: number[]): Promise<any[]>;
+
+  // Process file records from master (replica: create local upload entries)
+  processMasterFileRecords(fileRecords: any[]): Promise<void>;
+
+  // Update content file IDs after local upload entries are created
+  updateContentFileIds(data: object, idMap: Record<number, number>): object;
+
+  // Health check for MinIO and OSS connectivity
+  getHealth(): Promise<{
+    minioConnected: boolean;
+    ossConnected: boolean;
+    lastSync: string | null;
+    isRunning: boolean;
+  }>;
+
+  // Get sync statistics
+  getStats(): {
+    lastSyncAt: string | null;
+    filesDownloaded: number;
+    filesSkipped: number;
+    filesFailed: number;
+    totalBytes: number;
+    isRunning: boolean;
+    error: string | null;
+  };
+}
+```
+
 ### 3.2 Data Structures
 
 #### 3.2.1 Sync Message
@@ -499,6 +564,7 @@ interface SyncMessage {
   data: object | null;      // Document data (null for delete)
   locale?: string;          // i18n locale (e.g., "en", "ar")
   masterDocumentId?: string; // Master doc ID (for updates/deletes)
+  fileRecords?: any[];      // Attached file metadata from master (plugin::upload.file)
   metadata?: {
     queueId?: number;       // Sync queue ID
   };
@@ -1215,6 +1281,8 @@ const conflictType = masterAdminEdited ? 'master-admin-edit' : 'concurrent-edit'
 
 ### 9.2 Sensitive Fields Stripped
 
+Sensitive keys are **omitted entirely** from sync payloads (not replaced with `[REDACTED]`).
+
 ```typescript
 const SENSITIVE_FIELDS = [
   'password',
@@ -1270,6 +1338,27 @@ const SENSITIVE_FIELDS = [
 ---
 
 ## Changelog
+
+### Version 1.3 (February 2026)
+
+**Updates:**
+- ✅ Added **Media Sync Service** interface (`media-sync.ts`) — section 3.1.13
+- ✅ Added `media-sync` to component architecture diagram (service layer)
+- ✅ Added `fileRecords?: any[]` field to **SyncMessage** for file metadata transport
+- ✅ Added **File Record Syncing** — master sends `plugin::upload.file` records via Kafka, replica creates local entries
+- ✅ Added **OSS-to-MinIO Path Mapping** — `ossPathToMinioPath` helper strips upload prefix
+- ✅ Updated **Sensitive Data Handling** — keys are omitted entirely instead of set to `[REDACTED]`
+- ✅ Removed legacy `server/controllers/`, `server/services/`, `server/bootstrap.ts`
+- ✅ All `console.error` replaced with `strapi.log.error` for production logging
+- ✅ Removed `MediaConfig` fields: `syncOnStartup`, `syncInterval`, `disableFullSync`
+- ✅ Added `MediaConfig` fields: `batchSize`, `batchDelay`, `maxFilesPerSync`
+
+**Key Changes:**
+- Media bulk sync is now a standalone script (`npm run sync:media`) instead of automatic startup sync
+- On-demand sync (when content arrives via Kafka) remains built-in
+- No periodic background sync — only first-time bulk + on-demand
+- `watchIgnoreFiles` in admin config prevents dev server restarts from MinIO writes
+- File records enable proper file relations on replica without re-uploading
 
 ### Version 1.2 (January 2026)
 

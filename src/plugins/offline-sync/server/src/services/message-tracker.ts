@@ -42,10 +42,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      */
     async isProcessed(messageId: string): Promise<boolean> {
       if (!messageId) return false;
-      if (!strapi || !strapi.db) {
-        console.error('[MessageTracker] Strapi instance not available');
-        return false;
-      }
+      if (!strapi?.db) return false;
 
       try {
         const existing = await strapi.db.query(CONTENT_TYPE).findOne({
@@ -54,9 +51,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return !!existing;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.debug(`[MessageTracker] Check failed for ${messageId}: ${message}`);
-        }
+        strapi.log.debug(`[MessageTracker] Check failed for ${messageId}: ${message}`);
         return false;
       }
     },
@@ -66,10 +61,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      */
     async markProcessed(messageId: string, metadata: MessageMetadata = {}): Promise<boolean> {
       if (!messageId) return false;
-      if (!strapi || !strapi.db) {
-        console.error('[MessageTracker] Strapi instance not available');
-        return false;
-      }
+      if (!strapi?.db) return false;
 
       try {
         // Check if already exists (idempotent operation)
@@ -104,9 +96,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         if (message.includes('unique') || message.includes('duplicate')) {
           return false;
         }
-        if (strapi && strapi.log) {
-          strapi.log.error(`[MessageTracker] Failed to mark processed: ${message}`);
-        }
+        strapi.log.error(`[MessageTracker] Failed to mark processed: ${message}`);
         return false;
       }
     },
@@ -116,10 +106,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      */
     async markFailed(messageId: string): Promise<void> {
       if (!messageId) return;
-      if (!strapi || !strapi.db) {
-        console.error('[MessageTracker] Strapi instance not available');
-        return;
-      }
+      if (!strapi?.db) return;
 
       try {
         const existing = await strapi.db.query(CONTENT_TYPE).findOne({
@@ -149,9 +136,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.debug(`[MessageTracker] Failed to mark as failed: ${message}`);
-        }
+        strapi.log.debug(`[MessageTracker] Failed to mark as failed: ${message}`);
       }
     },
 
@@ -190,7 +175,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           });
         }
 
-        if (oldMessages.length > 0 && strapi.log) {
+        if (oldMessages.length > 0) {
           strapi.log.info(`[MessageTracker] Cleaned up ${oldMessages.length} old messages`);
         }
 
@@ -216,9 +201,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
       failed: number;
       lastProcessed: Date | null;
     }> {
-      if (!strapi || !strapi.db) {
-        return { total: 0, processed: 0, failed: 0, lastProcessed: null };
-      }
+      if (!strapi?.db) return { total: 0, processed: 0, failed: 0, lastProcessed: null };
 
       try {
         const all = await strapi.db.query(CONTENT_TYPE).findMany({

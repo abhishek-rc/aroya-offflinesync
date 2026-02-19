@@ -1,7 +1,7 @@
 # 🚢 Production Deployment Guide
 
-**Last Updated:** January 2026  
-**Version:** 1.2
+**Last Updated:** February 2026  
+**Version:** 1.3
 
 This guide explains how to deploy the Offline Sync system in production, where ships at sea connect to the master over the **internet** (not the same local network).
 
@@ -319,6 +319,14 @@ KAFKA_SASL_PASSWORD=kafka-password
   - [ ] SSL certificates installed (if using SSL)
   - [ ] Authentication credentials configured (if using SASL)
 
+- [ ] **MinIO Setup (if media sync needed):**
+  - [ ] MinIO Docker container running with persistent volume
+  - [ ] Bucket created and set to public access
+  - [ ] OSS credentials configured in `.env`
+  - [ ] MinIO credentials configured in `.env`
+  - [ ] First-time bulk sync completed (`npm run sync:media`)
+  - [ ] `NODE_OPTIONS=--max-old-space-size=4096` set for ships with large media libraries
+
 - [ ] **Network:**
   - [ ] Internet connectivity available
   - [ ] VPN connection (if using VPN)
@@ -329,6 +337,7 @@ KAFKA_SASL_PASSWORD=kafka-password
   - [ ] Heartbeat sends successfully
   - [ ] Sync operations work
   - [ ] Offline mode tested
+  - [ ] Media files accessible from local MinIO (if media sync configured)
 
 ---
 
@@ -543,6 +552,79 @@ kafka-broker-api-versions --bootstrap-server <MASTER_PUBLIC_IP>:9092
 
 ---
 
+## 🖼️ Media Storage in Production
+
+### Overview
+
+In production, each ship runs a **local MinIO instance** that caches media files from the master's OSS. This ensures media is available even when the ship is offline at sea.
+
+### MinIO Deployment
+
+Each ship requires a MinIO Docker container with **persistent storage**:
+
+```yaml
+services:
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+volumes:
+  minio-data:
+```
+
+### Bucket Access Policy
+
+The MinIO bucket must be set to **public access** so Strapi can serve media files directly via MinIO URLs. Configure this via the MinIO Console at http://localhost:9001.
+
+### OSS Credentials
+
+Each ship needs OSS credentials in `.env` to download media from the master's cloud storage:
+
+```env
+OSS_ACCESS_KEY_ID=your-oss-access-key
+OSS_ACCESS_KEY_SECRET=your-oss-secret-key
+OSS_BUCKET=your-oss-bucket-name
+OSS_REGION=your-oss-region
+OSS_ENDPOINT=your-oss-endpoint
+```
+
+### First-Time Sync for Large Media Libraries
+
+For ships with large media libraries, the initial bulk sync (`npm run sync:media`) may require special considerations:
+
+- **Memory:** Set `NODE_OPTIONS=--max-old-space-size=4096` for ships with large media libraries
+- **Batching:** The sync script processes files in batches to avoid overwhelming the network or local storage
+- **Rate limiting:** Downloads are throttled to prevent saturating satellite/cellular connections
+- **Resume:** If interrupted, re-running `npm run sync:media` will skip already-downloaded files
+
+```bash
+# For ships with large media libraries
+NODE_OPTIONS=--max-old-space-size=4096 npm run sync:media
+```
+
+### MinIO Backups
+
+Include MinIO data in your ship's backup strategy:
+
+- The `minio-data` Docker volume contains all cached media files
+- Back up regularly or ensure the volume is on a RAID-protected disk
+- If MinIO data is lost, re-run `npm run sync:media` when online to re-download all files
+
+### Ongoing Sync
+
+After initial setup, media sync is **on-demand** — files are downloaded automatically when content arrives via Kafka. There is no automatic startup or periodic sync process.
+
+---
+
 ## 📝 Production Best Practices
 
 1. **Security:**
@@ -588,14 +670,22 @@ kafka-broker-api-versions --bootstrap-server <MASTER_PUBLIC_IP>:9092
 **The system works the same way** - ships connect to master's Kafka, work offline when internet is down, and auto-sync when connection is restored!
 
 **New Features:**
+- ✅ Media sync: OSS → local MinIO with on-demand and bulk sync (`npm run sync:media`)
 - ✅ Full i18n/locale support - each language syncs independently
 - ✅ Locale-aware conflict detection - no false conflicts between different languages
 - ✅ Master edit tracking - conflicts correctly attributed to admin vs ship edits
 
 ---
 
-**Last Updated:** January 2026
-**Version:** 1.2
+**Last Updated:** February 2026
+**Version:** 1.3
+
+**New in v1.3:**
+- ✅ Media sync architecture: OSS → MinIO with on-demand and bulk sync
+- ✅ File record syncing via Kafka (`plugin::upload.file`)
+- ✅ `NODE_OPTIONS=--max-old-space-size=4096` support for large media libraries
+- ✅ Production logging improvements (`strapi.log.error`)
+- ✅ Legacy code cleanup
 
 **New in v1.2:**
 - ✅ Full i18n/locale support for multi-language content

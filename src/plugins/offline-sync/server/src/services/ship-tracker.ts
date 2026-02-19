@@ -34,16 +34,11 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
      */
     async registerShip(shipId: string, shipName?: string): Promise<Ship | null> {
       if (!shipId) {
-        if (strapi && strapi.log) {
-          strapi.log.warn('[ShipTracker] shipId is required');
-        }
+        strapi.log.warn('[ShipTracker] shipId is required');
         return null;
       }
 
-      if (!strapi || !strapi.db) {
-        console.error('[ShipTracker] Strapi instance or db is not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       // Check if shutting down or connection unavailable
       if ((strapi as any)._isShuttingDown) {
@@ -54,7 +49,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
       try {
         const connection = strapi.db.connection;
         if (!connection || connection.destroyed) {
-          strapi.log?.debug('[ShipTracker] DB connection unavailable for registerShip');
+          strapi.log.debug('[ShipTracker] DB connection unavailable for registerShip');
           return null;
         }
       } catch {
@@ -79,9 +74,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
               updatedAt: now,
             },
           });
-          if (strapi.log) {
-            strapi.log.debug(`[ShipTracker] Updated ship ${shipId} - last seen: ${now.toISOString()}`);
-          }
+          strapi.log.debug(`[ShipTracker] Updated ship ${shipId} - last seen: ${now.toISOString()}`);
           return updated as Ship;
         }
 
@@ -98,20 +91,14 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
           },
         });
 
-        if (strapi.log) {
-          strapi.log.info(`[ShipTracker] ✅ New ship registered: ${shipId} (${shipName || shipId})`);
-        }
+        strapi.log.info(`[ShipTracker] New ship registered: ${shipId} (${shipName || shipId})`);
         return created as Ship;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         const stack = error instanceof Error ? error.stack : undefined;
-        if (strapi && strapi.log) {
-          strapi.log.error(`[ShipTracker] ❌ Failed to register ship ${shipId}: ${message}`);
-          if (stack) {
-            strapi.log.debug(`[ShipTracker] Error stack: ${stack}`);
-          }
-        } else {
-          console.error(`[ShipTracker] ❌ Failed to register ship ${shipId}: ${message}`);
+        strapi.log.error(`[ShipTracker] Failed to register ship ${shipId}: ${message}`);
+        if (stack) {
+          strapi.log.debug(`[ShipTracker] Error stack: ${stack}`);
         }
         throw error;
       }
@@ -121,10 +108,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
      * List all registered ships
      */
     async listShips(): Promise<Ship[]> {
-      if (!strapi || !strapi.db) {
-        console.error('[ShipTracker] Strapi instance not available');
-        return [];
-      }
+      if (!strapi?.db) return [];
       try {
         const result = await strapi.db.query(CONTENT_TYPE).findMany({
           orderBy: { lastSeenAt: 'desc' },
@@ -132,9 +116,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
         return result as Ship[];
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[ShipTracker] Failed to list ships: ${message}`);
-        }
+        strapi.log.error(`[ShipTracker] Failed to list ships: ${message}`);
         return [];
       }
     },
@@ -143,10 +125,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
      * Get a specific ship by shipId
      */
     async getShip(shipId: string): Promise<Ship | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[ShipTracker] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
       try {
         const result = await strapi.db.query(CONTENT_TYPE).findOne({
           where: { shipId },
@@ -154,9 +133,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
         return result as Ship | null;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[ShipTracker] Failed to get ship ${shipId}: ${message}`);
-        }
+        strapi.log.error(`[ShipTracker] Failed to get ship ${shipId}: ${message}`);
         return null;
       }
     },
@@ -204,7 +181,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
           count++;
         }
 
-        if (count > 0 && strapi.log) {
+        if (count > 0) {
           strapi.log.info(`[ShipTracker] Marked ${count} ships as offline`);
         }
 
@@ -225,9 +202,7 @@ export default ({ strapi: strapiParam }: { strapi: any }) => {
      * Get ship statistics
      */
     async getStats(): Promise<{ total: number; online: number; offline: number }> {
-      if (!strapi || !strapi.db) {
-        return { total: 0, online: 0, offline: 0 };
-      }
+      if (!strapi?.db) return { total: 0, online: 0, offline: 0 };
       try {
         const ships = await strapi.db.query(CONTENT_TYPE).findMany({
           orderBy: { lastSeenAt: 'desc' },

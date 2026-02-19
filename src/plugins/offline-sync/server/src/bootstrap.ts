@@ -63,7 +63,7 @@ function stripSensitiveData(obj: any): any {
   const stripped: any = {};
   for (const [key, value] of Object.entries(obj)) {
     if (SENSITIVE_FIELDS.includes(key)) {
-      stripped[key] = '[REDACTED]';
+      continue;
     } else if (typeof value === 'object' && value !== null) {
       stripped[key] = stripSensitiveData(value);
     } else {

@@ -13,7 +13,6 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
    */
   const processMessage = async (message: any): Promise<void> => {
     if (!strapi) {
-      console.error('[KafkaConsumer] Strapi instance not available');
       return;
     }
 
@@ -153,11 +152,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
               const syncMessage = JSON.parse(message.value?.toString() || '{}');
               await processMessage(syncMessage);
             } catch (error: any) {
-              if (strapi && strapi.log) {
-                strapi.log.error(`Error processing Kafka message: ${error.message}`);
-              } else {
-                console.error(`Error processing Kafka message: ${error.message}`);
-              }
+              strapi.log.error(`Error processing Kafka message: ${error.message}`);
             }
           },
         });

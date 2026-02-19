@@ -1,7 +1,7 @@
 # 📚 Offline Sync Plugin Documentation
 
-**Last Updated:** January 2026  
-**Version:** 1.2
+**Last Updated:** February 2026  
+**Version:** 1.3
 
 Welcome to the Offline Sync Plugin documentation! This directory contains all documentation related to the plugin.
 
@@ -15,19 +15,14 @@ Welcome to the Offline Sync Plugin documentation! This directory contains all do
 - **[MASTER_SETUP_SUMMARY.md](./MASTER_SETUP_SUMMARY.md)** - Quick reference for Master setup (local network/testing)
 - **[PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)** - Production deployment guide (ships over internet)
 
-### 🧪 Testing
+### 📦 Media Sync
 
-- **[TEST_SCENARIOS.md](./TEST_SCENARIOS.md)** - Comprehensive test scenarios and test cases covering:
-  - Basic connectivity tests
-  - Offline scenario tests
-  - Online sync tests
-  - Conflict resolution tests
-  - Data integrity tests
-  - Edge case tests
-  - Performance tests
-  - Error handling tests
-  - Bi-directional sync tests
-  - Reconnection tests
+- **[MINIO_MEDIA_SYNC.md](./MINIO_MEDIA_SYNC.md)** - Media synchronization between OSS and MinIO, including:
+  - OSS-to-MinIO architecture and path mapping
+  - First-time bulk sync via standalone script (`npm run sync:media`)
+  - On-demand sync when content arrives via Kafka
+  - File record syncing and relation handling
+  - MinIO client configuration and URL transformation
 
 ### 🌊 Understanding Offline Sync
 
@@ -36,7 +31,7 @@ Welcome to the Offline Sync Plugin documentation! This directory contains all do
   - Sync queue mechanism
   - Connectivity monitoring
   - Conflict detection & resolution (timestamp + source-based)
-  - **i18n/Locale-aware sync** (NEW in v1.2)
+  - i18n/Locale-aware sync
   - New locale detection (no false conflicts)
   - Real-world examples
 
@@ -52,20 +47,20 @@ Welcome to the Offline Sync Plugin documentation! This directory contains all do
 ### For Replica Administrators
 1. Start with **[REPLICA_SETUP_GUIDE.md](./REPLICA_SETUP_GUIDE.md)**
 2. Understand offline capabilities: **[OFFLINE_SYNC_EXPLAINED.md](./OFFLINE_SYNC_EXPLAINED.md)**
-3. Test your setup: **[TEST_SCENARIOS.md](./TEST_SCENARIOS.md)**
+3. Set up media sync: **[MINIO_MEDIA_SYNC.md](./MINIO_MEDIA_SYNC.md)**
 
 ### For Master Administrators
 1. **Testing/Local:** Quick setup: **[MASTER_SETUP_SUMMARY.md](./MASTER_SETUP_SUMMARY.md)** (same network)
 2. **Production:** Deploy for ships: **[PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)** (over internet)
 3. Share **[REPLICA_SETUP_GUIDE.md](./REPLICA_SETUP_GUIDE.md)** with replica administrators
 4. Understand conflict resolution: **[OFFLINE_SYNC_EXPLAINED.md](./OFFLINE_SYNC_EXPLAINED.md)** (Conflict section)
-5. Test system: **[TEST_SCENARIOS.md](./TEST_SCENARIOS.md)**
+5. Configure media sync: **[MINIO_MEDIA_SYNC.md](./MINIO_MEDIA_SYNC.md)**
 
 ### For Developers
 1. Architecture overview: **[HIGH_LEVEL_DESIGN.md](./HIGH_LEVEL_DESIGN.md)**
 2. Implementation details: **[LOW_LEVEL_DESIGN.md](./LOW_LEVEL_DESIGN.md)**
 3. How it works: **[OFFLINE_SYNC_EXPLAINED.md](./OFFLINE_SYNC_EXPLAINED.md)**
-4. Test scenarios: **[TEST_SCENARIOS.md](./TEST_SCENARIOS.md)**
+4. Media sync: **[MINIO_MEDIA_SYNC.md](./MINIO_MEDIA_SYNC.md)**
 
 ---
 
@@ -120,21 +115,17 @@ Welcome to the Offline Sync Plugin documentation! This directory contains all do
 - API specifications
 - Code structure
 
-### TEST_SCENARIOS.md
-**Purpose:** Comprehensive test scenarios and test cases  
-**Audience:** Testers, QA, Administrators, Developers  
+### MINIO_MEDIA_SYNC.md
+**Purpose:** Media synchronization between Alibaba Cloud OSS and MinIO  
+**Audience:** Administrators, DevOps, Developers  
 **Contents:**
-- Basic connectivity tests
-- Offline scenario tests (internet disconnection, extended offline)
-- Online sync tests (create, update, delete)
-- Conflict resolution tests
-- Data integrity tests
-- Edge case tests (large content, special characters, rapid operations)
-- Performance tests
-- Error handling tests
-- Bi-directional sync tests
-- Reconnection tests
-- Test checklist and results template
+- OSS-to-MinIO sync architecture
+- First-time bulk sync via standalone script (`npm run sync:media`)
+- On-demand sync for content arriving via Kafka
+- `ossPathToMinioPath` path mapping (strips `uploads/` prefix)
+- File record syncing (`plugin::upload.file` via `fileRecords` field)
+- MinIO client configuration
+- URL transformation for replica environments
 
 ### PRODUCTION_DEPLOYMENT.md
 **Purpose:** Production deployment guide for ships connecting over internet  
@@ -166,16 +157,17 @@ Welcome to the Offline Sync Plugin documentation! This directory contains all do
 
 ---
 
-**Last Updated:** January 2026
+**Last Updated:** February 2026
 
 ---
 
-## 🆕 What's New in v1.2
+## 🆕 What's New in v1.3
 
-- **Full i18n/Locale Support** - Each language version syncs independently
-- **Locale-aware Conflict Detection** - No false conflicts between different languages
-- **New Locale Detection** - Adding a new locale bypasses conflict checks
-- **Master Edit Log** - Tracks admin edits for accurate conflict attribution
-- **lastSyncedBy Tracking** - Multi-ship conflict detection improvement
-- **Master Sync Queue** - Master can queue changes when Kafka is offline
+- **Media Sync Architecture Overhaul** - Bulk sync via standalone script (`npm run sync:media`); on-demand sync still built-in for Kafka-delivered content
+- **File Record Syncing** - Master includes `plugin::upload.file` records in Kafka messages (`fileRecords` field); replicas create local file entries for proper relation handling
+- **OSS-to-MinIO Path Mapping** - `ossPathToMinioPath` helper strips the `uploads/` prefix for correct MinIO storage
+- **Sensitive Data Handling** - `stripSensitiveData` now omits sensitive keys entirely instead of replacing with `[REDACTED]`
+- **Legacy Code Cleanup** - Removed dead code in `server/controllers/`, `server/services/`, and `server/bootstrap.ts` (superseded by `server/src/`)
+- **Production Logging** - All `console.error` replaced with `strapi.log.error` across service files
+- **Development Mode** - `watchIgnoreFiles` in admin config prevents server restarts from MinIO writes to `docker/uploads`
 

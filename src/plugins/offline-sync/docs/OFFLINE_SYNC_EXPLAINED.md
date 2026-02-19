@@ -1,7 +1,7 @@
 # 🌊 How Offline Sync Handles Network Disconnections
 
-**Last Updated:** January 2026  
-**Version:** 1.2
+**Last Updated:** February 2026  
+**Version:** 1.3
 
 This document explains how the Offline Sync plugin handles scenarios when ships are at sea with **no internet connection** or **intermittent connectivity**.
 
@@ -259,6 +259,73 @@ When ship regains connection:
 - ✅ No manual intervention needed
 
 **Note:** Kafka retains messages even when ship is offline, so ship receives all missed updates when reconnecting.
+
+---
+
+## 🖼️ Media Sync During Offline
+
+### How Media Files Stay Available Offline
+
+When a ship is online, media files (images, documents, etc.) are synchronized from the master's OSS (Object Storage Service) to a **local MinIO** instance running on the ship. This ensures media is available even when the ship loses internet connectivity.
+
+### When Online
+
+- Media files are synced from OSS to the ship's local MinIO storage
+- **On-demand sync:** When content arrives via Kafka containing media references, the referenced images are immediately downloaded from OSS to MinIO
+- **First-time bulk sync:** Run `npm run sync:media` to download all existing media files from OSS to the local MinIO (uses the standalone script `scripts/sync-media.js`)
+- File records (`plugin::upload.file`) are sent by the master in Kafka messages, and the replica creates corresponding local file entries
+
+### When Offline
+
+- MinIO serves all previously cached media files locally
+- Content created offline can reference existing local media
+- No media downloads are attempted (OSS is unreachable)
+
+### URL Transformation
+
+The system transforms OSS paths to MinIO paths automatically using `ossPathToMinioPath`:
+- **OSS path:** `uploads/file.jpg` → **MinIO path:** `file.jpg` (upload prefix stripped)
+- This ensures media URLs resolve correctly against the local MinIO instance
+
+### Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  SHIP (Online)                          │
+│                                         │
+│  ┌──────────────┐    ┌──────────────┐  │
+│  │   Strapi     │───►│    MinIO     │  │
+│  │  (Replica)   │    │  (Local)     │  │
+│  └──────┬───────┘    └──────────────┘  │
+│         │                    ▲          │
+│         │ Kafka msg          │ Download │
+│         │ with file records  │ files    │
+│         ▼                    │          │
+│  ┌──────────────┐    ┌──────────────┐  │
+│  │   media-sync │───►│     OSS      │  │
+│  │   service    │    │  (Remote)    │  │
+│  └──────────────┘    └──────────────┘  │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  SHIP (Offline)                         │
+│                                         │
+│  ┌──────────────┐    ┌──────────────┐  │
+│  │   Strapi     │───►│    MinIO     │  │
+│  │  (Replica)   │    │  (Local)     │  │
+│  └──────────────┘    │ Serves cached│  │
+│                      │ media files  │  │
+│                      └──────────────┘  │
+│         ✅ No internet needed          │
+└─────────────────────────────────────────┘
+```
+
+### Key Points
+
+- **First-time setup:** Run `npm run sync:media` once to bulk-download all existing media
+- **Ongoing sync:** Media downloads happen automatically when content arrives via Kafka
+- **No automatic startup/periodic sync** — media sync is either on-demand (Kafka-triggered) or manual (bulk script)
+- **MinIO runs locally** on each ship via Docker
 
 ---
 
@@ -938,6 +1005,7 @@ GET /api/offline-sync/conflicts?contentType=article
 3. **sync-service**: Handles push/pull operations
 4. **kafka-producer**: Sends messages to Kafka
 5. **kafka-consumer**: Receives messages from Kafka
+6. **media-sync**: Handles media file synchronization (OSS ↔ MinIO) and URL transformation
 
 ---
 

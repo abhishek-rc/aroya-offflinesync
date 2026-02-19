@@ -1,7 +1,7 @@
 # 🚢 Strapi Offline Sync - Replica Setup Guide
 
-**Last Updated:** January 2026  
-**Version:** 1.2
+**Last Updated:** February 2026  
+**Version:** 1.3
 
 This guide will help you set up your system as a **Replica** (Ship) that connects to the Master system for bi-directional data synchronization.
 
@@ -31,14 +31,14 @@ This guide will help you set up your system as a **Replica** (Ship) that connect
 │  └──────────────┘                                      │
 │                                                         │
 │  ✅ NO Kafka needed!                                    │
-│  ✅ NO Docker needed (unless you want it for PostgreSQL)│
+│  ✅ NO Docker needed (unless for PostgreSQL or MinIO)   │
 │  ✅ Just configure KAFKA_BROKERS to point to master     │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Important:** 
 - You don't need to install or run Kafka. Your Strapi will connect directly to the master's Kafka running in Docker.
-- You don't need Docker at all (unless you want to run PostgreSQL in Docker, which is optional).
+- You don't need Docker at all (unless you want to run PostgreSQL in Docker or need MinIO for media sync).
 - You only need Node.js and PostgreSQL installed directly on your system.
 
 ---
@@ -180,7 +180,7 @@ Before you begin, make sure you have:
 - ✅ Network connectivity to the master system
 
 **⚠️ IMPORTANT:** 
-- ❌ You do **NOT** need Docker (unless you want to run PostgreSQL in Docker)
+- ❌ You do **NOT** need Docker (unless for PostgreSQL or MinIO for media sync)
 - ❌ You do **NOT** need to install or run Kafka! The master is running Kafka in Docker, and you will connect to it remotely.
 - ✅ You only need Node.js and PostgreSQL (can be installed directly without Docker)
 
@@ -403,6 +403,72 @@ docker run --name postgres-replica \
    node -e "console.log(require('crypto').randomBytes(16).toString('base64'))"
    # Run this 5 times for APP_KEYS, API_TOKEN_SALT, ADMIN_JWT_SECRET, TRANSFER_TOKEN_SALT, JWT_SECRET
    ```
+
+---
+
+## 🖼️ Step 4.5: Media Sync Setup (Optional)
+
+If your deployment requires media files (images, documents, etc.) to be available offline, set up local MinIO storage and configure media sync.
+
+### 1. Run MinIO via Docker
+
+```bash
+docker run -d \
+  --name minio \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -v minio-data:/data \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /data --console-address ":9001"
+```
+
+**MinIO Console:** Access at http://localhost:9001 (login: `minioadmin` / `minioadmin`)
+
+### 2. Create and Configure Bucket
+
+1. Open MinIO Console at http://localhost:9001
+2. Create a bucket (e.g., `strapi-uploads`)
+3. **Set bucket access policy to public** — this allows Strapi to serve media files directly via MinIO URLs
+
+### 3. Add Environment Variables
+
+Add the following to your `.env` file:
+
+```env
+# ============================================
+# Media Sync - OSS Configuration (source)
+# ============================================
+OSS_ACCESS_KEY_ID=your-oss-access-key
+OSS_ACCESS_KEY_SECRET=your-oss-secret-key
+OSS_BUCKET=your-oss-bucket-name
+OSS_REGION=your-oss-region
+OSS_ENDPOINT=your-oss-endpoint
+
+# ============================================
+# Media Sync - MinIO Configuration (local)
+# ============================================
+MINIO_ENDPOINT=localhost
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=strapi-uploads
+MINIO_USE_SSL=false
+```
+
+### 4. Run First-Time Bulk Sync
+
+Download all existing media files from OSS to your local MinIO:
+
+```bash
+npm run sync:media
+```
+
+This runs `scripts/sync-media.js` and may take a while depending on how many media files exist. After the initial bulk sync, ongoing media downloads happen automatically when content arrives via Kafka.
+
+### 5. Dev Mode Note
+
+When running in development mode (`npm run develop`), configure `watchIgnoreFiles` in your Strapi config to prevent server restarts triggered by MinIO file writes.
 
 ---
 
@@ -1098,7 +1164,7 @@ Before contacting support, verify:
 - [ ] **Database migration run** (creates `sync_queue` table for offline operations)
 
 **Remember:** 
-- ❌ You don't need Docker (unless you want it for PostgreSQL)
+- ❌ You don't need Docker (unless for PostgreSQL or MinIO)
 - ❌ You don't need Kafka installed - you're connecting to the master's Kafka!
 - ✅ You only need Node.js and PostgreSQL (can be installed directly)
 - ✅ **Offline capability is built-in** - you can work without internet, changes will sync automatically when connection is restored!

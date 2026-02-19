@@ -52,15 +52,13 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Add a failed message to the dead letter queue
      */
     async add(input: DeadLetterInput): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
+      if (!strapi?.db) {
+        strapi?.log?.error('[DeadLetter] Database not available');
         return null;
       }
 
       if (!input.messageId) {
-        if (strapi.log) {
-          strapi.log.warn('[DeadLetter] messageId is required');
-        }
+        strapi.log.warn('[DeadLetter] messageId is required');
         return null;
       }
 
@@ -88,17 +86,11 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           },
         });
 
-        if (strapi.log) {
-          strapi.log.warn(`[DeadLetter] Message ${input.messageId} added to dead letter queue`);
-        }
+        strapi.log.warn(`[DeadLetter] Message ${input.messageId} added to dead letter queue`);
         return created as DeadLetter;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to add message: ${message}`);
-        } else {
-          console.error(`[DeadLetter] Failed to add message: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to add message: ${message}`);
         return null;
       }
     },
@@ -107,10 +99,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Get all pending dead letters for retry
      */
     async getPending(limit: number = 100): Promise<DeadLetter[]> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return [];
-      }
+      if (!strapi?.db) return [];
 
       try {
         const result = await strapi.db.query(CONTENT_TYPE).findMany({
@@ -123,9 +112,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return result as DeadLetter[];
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to get pending: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to get pending: ${message}`);
         return [];
       }
     },
@@ -134,10 +121,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Get all dead letters
      */
     async getAll(filters?: { status?: string; shipId?: string }): Promise<DeadLetter[]> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return [];
-      }
+      if (!strapi?.db) return [];
 
       try {
         const queryWhere: Record<string, unknown> = {};
@@ -156,9 +140,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return result as DeadLetter[];
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to get all: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to get all: ${message}`);
         return [];
       }
     },
@@ -167,10 +149,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Get a specific dead letter by id
      */
     async get(id: number): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       try {
         const result = await strapi.db.query(CONTENT_TYPE).findOne({
@@ -179,9 +158,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return result as DeadLetter | null;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to get ${id}: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to get ${id}: ${message}`);
         return null;
       }
     },
@@ -190,10 +167,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Get a specific dead letter by documentId
      */
     async getByDocumentId(documentId: string): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       try {
         const result = await strapi.db.query(CONTENT_TYPE).findOne({
@@ -202,9 +176,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return result as DeadLetter | null;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to get ${documentId}: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to get ${documentId}: ${message}`);
         return null;
       }
     },
@@ -213,10 +185,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Mark a dead letter as being retried
      */
     async markRetrying(id: number): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       try {
         const existing = await this.get(id);
@@ -238,9 +207,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         return updated as DeadLetter;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to mark retrying: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to mark retrying: ${message}`);
         return null;
       }
     },
@@ -249,10 +216,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Mark a dead letter as resolved (successfully processed on retry)
      */
     async markResolved(id: number, resolvedBy?: string): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       try {
         const updated = await strapi.db.query(CONTENT_TYPE).update({
@@ -265,15 +229,11 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           },
         });
 
-        if (strapi.log) {
-          strapi.log.info(`[DeadLetter] Message ${id} resolved`);
-        }
+        strapi.log.info(`[DeadLetter] Message ${id} resolved`);
         return updated as DeadLetter;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to mark resolved: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to mark resolved: ${message}`);
         return null;
       }
     },
@@ -282,10 +242,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Mark a dead letter as exhausted (max retries reached)
      */
     async markExhausted(id: number): Promise<DeadLetter | null> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return null;
-      }
+      if (!strapi?.db) return null;
 
       try {
         const updated = await strapi.db.query(CONTENT_TYPE).update({
@@ -296,15 +253,11 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           },
         });
 
-        if (strapi.log) {
-          strapi.log.warn(`[DeadLetter] Message ${id} exhausted all retries`);
-        }
+        strapi.log.warn(`[DeadLetter] Message ${id} exhausted all retries`);
         return updated as DeadLetter;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to mark exhausted: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to mark exhausted: ${message}`);
         return null;
       }
     },
@@ -313,19 +266,14 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
      * Delete a dead letter
      */
     async delete(id: number): Promise<boolean> {
-      if (!strapi || !strapi.db) {
-        console.error('[DeadLetter] Strapi instance not available');
-        return false;
-      }
+      if (!strapi?.db) return false;
 
       try {
         await strapi.db.query(CONTENT_TYPE).delete({ where: { id } });
         return true;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        if (strapi && strapi.log) {
-          strapi.log.error(`[DeadLetter] Failed to delete: ${message}`);
-        }
+        strapi.log.error(`[DeadLetter] Failed to delete: ${message}`);
         return false;
       }
     },
@@ -397,7 +345,7 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
           });
         }
 
-        if (oldMessages.length > 0 && strapi.log) {
+        if (oldMessages.length > 0) {
           strapi.log.info(`[DeadLetter] Cleaned up ${oldMessages.length} resolved messages`);
         }
 
