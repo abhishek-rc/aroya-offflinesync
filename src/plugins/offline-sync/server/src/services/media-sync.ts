@@ -1146,7 +1146,7 @@ export default ({ strapi }: { strapi: any }) => {
         for (const objectPath of objectPaths) {
           try {
             // Check if file exists in MinIO first
-            const existsInMinio = await this.fileExistsInMinio(objectPath);
+            const existsInMinio = await fileExistsInMinio(objectPath);
             if (!existsInMinio) {
               strapi.log.warn(`[MediaSync] ⚠️ File not found in MinIO: ${objectPath} (bucket: ${config.minio.bucket})`);
               result.failed++;
