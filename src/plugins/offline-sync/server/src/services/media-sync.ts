@@ -251,6 +251,19 @@ export default ({ strapi }: { strapi: any }) => {
   };
 
   /**
+   * Convert an OSS object name to a MinIO object name by stripping the upload path prefix
+   */
+  const ossPathToMinioPath = (ossObjectName: string): string => {
+    const config = getMediaConfig();
+    if (!config) return ossObjectName;
+    const uploadPath = config.oss.uploadPath?.replace(/\/$/, '');
+    if (uploadPath && ossObjectName.startsWith(uploadPath + '/')) {
+      return ossObjectName.substring(uploadPath.length + 1);
+    }
+    return ossObjectName;
+  };
+
+  /**
    * Sync a single file from OSS to MinIO with retry logic for rate limiting
    */
   const syncFile = async (objectName: string, retryCount: number = 0): Promise<boolean> => {
@@ -263,17 +276,20 @@ export default ({ strapi }: { strapi: any }) => {
     const INITIAL_RETRY_DELAY = 1000; // 1 second
     const MAX_RETRY_DELAY = 30000; // 30 seconds
 
+    // OSS uses uploadPath prefix (e.g. uploads/file.jpg), MinIO stores at root (file.jpg)
+    const minioObjectName = ossPathToMinioPath(objectName);
+
     try {
-      // Get file from OSS
+      // Get file from OSS (full path with upload prefix)
       const dataStream = await ossClient.getObject(config.oss.bucket, objectName);
 
       // Get file stats for size
       const stat = await ossClient.statObject(config.oss.bucket, objectName);
 
-      // Upload to MinIO
+      // Upload to MinIO (without upload prefix)
       await minioClient.putObject(
         config.minio.bucket,
-        objectName,
+        minioObjectName,
         dataStream,
         stat.size,
         { 'Content-Type': stat.metaData?.['content-type'] || 'application/octet-stream' }
@@ -414,8 +430,8 @@ export default ({ strapi }: { strapi: any }) => {
             const filePromises = batch.map(async (obj) => {
               processed++;
 
-              // Check if file already exists in MinIO
-              const exists = await fileExistsInMinio(obj.name);
+              // Check MinIO using path without upload prefix
+              const exists = await fileExistsInMinio(ossPathToMinioPath(obj.name));
               if (exists) {
                 syncStats.filesSkipped++;
                 return;
@@ -803,14 +819,14 @@ export default ({ strapi }: { strapi: any }) => {
           }
 
           try {
-            // Check if already exists in MinIO
-            const exists = await fileExistsInMinio(objectPath);
+            // Check MinIO using path without upload prefix
+            const exists = await fileExistsInMinio(ossPathToMinioPath(objectPath));
             if (exists) {
               result.skipped++;
               continue;
             }
 
-            // Download from OSS and upload to MinIO
+            // Download from OSS and upload to MinIO (syncFile handles path mapping)
             const success = await syncFile(objectPath);
             if (success) {
               result.synced++;
@@ -850,13 +866,11 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       try {
-        // Check if already exists
-        const exists = await fileExistsInMinio(objectPath);
+        const exists = await fileExistsInMinio(ossPathToMinioPath(objectPath));
         if (exists) {
-          return true; // Already synced
+          return true;
         }
 
-        // Sync the file
         return await syncFile(objectPath);
       } catch {
         return false;
