@@ -647,15 +647,26 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
         let cleanedData = this.cleanSyncData(data || {});
 
         // On-demand media sync: Download images BEFORE transforming URLs
-        // This ensures images are available in MinIO when content is displayed
         const mediaSync = strapi.plugin('offline-sync').service('media-sync');
         if (mediaSync.isEnabled()) {
-          // Sync media files referenced in this content (non-blocking but awaited)
           try {
             await mediaSync.syncContentMedia(data);
           } catch (mediaSyncError: any) {
-            // Non-critical: log but continue with content sync
             strapi.log.debug(`[Sync] Media sync skipped: ${mediaSyncError.message}`);
+          }
+
+          // Process file records from master to create local plugin::upload.file entries
+          if (message.fileRecords && message.fileRecords.length > 0) {
+            strapi.log.info(`[Sync] 📥 Processing ${message.fileRecords.length} file records from master...`);
+            try {
+              const fileIdMapping = await mediaSync.processMasterFileRecords(message.fileRecords);
+              if (fileIdMapping.size > 0) {
+                cleanedData = mediaSync.updateContentFileIds(cleanedData, fileIdMapping);
+                strapi.log.info(`[Sync] ✅ Updated content with ${fileIdMapping.size} master file ID mappings`);
+              }
+            } catch (fileRecordError: any) {
+              strapi.log.error(`[Sync] Failed to process master file records: ${fileRecordError.message}`);
+            }
           }
 
           // Transform media URLs from master (OSS) to replica (MinIO)

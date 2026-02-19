@@ -1458,6 +1458,76 @@ export default ({ strapi }: { strapi: any }) => {
     },
 
     /**
+     * Process file records received from master (replica side)
+     * Creates corresponding plugin::upload.file entries with MinIO URLs
+     * Returns a mapping of master file IDs to local replica file IDs
+     */
+    async processMasterFileRecords(fileRecords: any[]): Promise<Map<number, number>> {
+      const idMapping = new Map<number, number>();
+
+      if (!fileRecords || fileRecords.length === 0) {
+        return idMapping;
+      }
+
+      for (const fileData of fileRecords) {
+        try {
+          const existing = await strapi.db.query('plugin::upload.file').findOne({
+            where: { hash: fileData.hash },
+          });
+
+          if (existing) {
+            idMapping.set(fileData.id, existing.id);
+            strapi.log.debug(`[MediaSync] File already exists locally: ${fileData.hash} → ${existing.id}`);
+          } else {
+            const minioUrl = this.ossUrlToMinioUrl(fileData.url);
+
+            let transformedFormats = fileData.formats;
+            if (fileData.formats && typeof fileData.formats === 'object') {
+              transformedFormats = {};
+              for (const [key, format] of Object.entries(fileData.formats)) {
+                const f = format as any;
+                transformedFormats[key] = {
+                  ...f,
+                  url: f.url ? this.ossUrlToMinioUrl(f.url) : f.url,
+                };
+              }
+            }
+
+            const created = await strapi.db.query('plugin::upload.file').create({
+              data: {
+                name: fileData.name,
+                alternativeText: fileData.alternativeText,
+                caption: fileData.caption,
+                width: fileData.width,
+                height: fileData.height,
+                formats: transformedFormats,
+                hash: fileData.hash,
+                ext: fileData.ext,
+                mime: fileData.mime,
+                size: fileData.size,
+                url: minioUrl,
+                previewUrl: fileData.previewUrl ? this.ossUrlToMinioUrl(fileData.previewUrl) : null,
+                provider: 'aws-s3',
+                provider_metadata: fileData.provider_metadata,
+                folderPath: fileData.folderPath,
+              },
+            });
+
+            if (created) {
+              idMapping.set(fileData.id, created.id);
+              strapi.log.info(`[MediaSync] ✅ Created local file record: ${created.id} (${fileData.name})`);
+            }
+          }
+        } catch (error: any) {
+          strapi.log.error(`[MediaSync] Failed to process master file record ${fileData.id}: ${error.message}`);
+        }
+      }
+
+      strapi.log.info(`[MediaSync] 📥 Processed ${idMapping.size} file records from master`);
+      return idMapping;
+    },
+
+    /**
      * Update content data with new file IDs after file records are created on master
      */
     updateContentFileIds(data: any, idMapping: Map<number, number>): any {

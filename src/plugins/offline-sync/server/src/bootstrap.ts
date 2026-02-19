@@ -693,7 +693,13 @@ export default ({ strapi }: { strapi: any }) => {
 
         for (const item of pending) {
           try {
-            const message = {
+            const itemData = item.data || {};
+            const fileRecords = itemData._fileRecords || [];
+            if (itemData._fileRecords) {
+              delete itemData._fileRecords;
+            }
+
+            const message: any = {
               messageId: `master-queued-${Date.now()}-${item.content_id}`,
               shipId: 'master',
               timestamp: new Date().toISOString(),
@@ -701,9 +707,13 @@ export default ({ strapi }: { strapi: any }) => {
               contentType: item.content_type,
               contentId: item.content_id,
               version: 0,
-              data: item.data,
+              data: itemData,
               locale: item.locale,
             };
+
+            if (fileRecords.length > 0) {
+              message.fileRecords = fileRecords;
+            }
 
             await kafkaProducer.sendToShips(message);
             await masterSyncQueue.markSent(item.id);
@@ -1022,7 +1032,6 @@ export default ({ strapi }: { strapi: any }) => {
           const safeData = operation !== 'delete' ? stripSensitiveData(syncData) : null;
 
           // Log this edit as coming from Master admin (for conflict detection)
-          // This helps distinguish Master direct edits from Ship syncs
           await masterSyncQueue.logEdit({
             contentType: uid,
             documentId,
@@ -1031,9 +1040,26 @@ export default ({ strapi }: { strapi: any }) => {
             locale,
           });
 
+          // Extract file records for media relations so replicas can create upload.file entries
+          let fileRecords: any[] = [];
+          if (safeData && operation !== 'delete') {
+            try {
+              const mediaSync = strapi.plugin('offline-sync').service('media-sync');
+              if (mediaSync.isEnabled()) {
+                const fileIds = mediaSync.extractFileIds(safeData);
+                if (fileIds.length > 0) {
+                  fileRecords = await mediaSync.getFileRecords(fileIds);
+                  strapi.log.debug(`[Sync] Including ${fileRecords.length} file records for ships`);
+                }
+              }
+            } catch (fileErr: any) {
+              strapi.log.debug(`[Sync] File record extraction skipped: ${fileErr.message}`);
+            }
+          }
+
           // Try to publish directly if Kafka is connected
           if (kafkaProducer.isConnected()) {
-            const message = {
+            const message: any = {
               messageId: `master-${Date.now()}-${documentId}`,
               shipId: 'master',
               timestamp: new Date().toISOString(),
@@ -1042,18 +1068,26 @@ export default ({ strapi }: { strapi: any }) => {
               contentId: documentId,
               version: 0,
               data: safeData,
-              locale, // Include locale for i18n support
+              locale,
             };
+
+            if (fileRecords.length > 0) {
+              message.fileRecords = fileRecords;
+            }
 
             await kafkaProducer.sendToShips(message);
             strapi.log.info(`[Sync] 📤 Published ${operation} for ${uid} (${documentId})${locale ? ` [${locale}]` : ''} to ships`);
           } else {
             // Kafka offline - queue for later
+            const queueData: any = { ...safeData };
+            if (fileRecords.length > 0) {
+              queueData._fileRecords = fileRecords;
+            }
             await masterSyncQueue.enqueue({
               contentType: uid,
               contentId: documentId,
               operation,
-              data: safeData,
+              data: queueData,
               locale,
             });
             strapi.log.info(`[Sync] 📥 Queued ${operation} for ${uid} (${documentId})${locale ? ` [${locale}]` : ''} (Kafka offline)`);
