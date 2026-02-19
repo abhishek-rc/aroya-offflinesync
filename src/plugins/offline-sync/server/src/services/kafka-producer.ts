@@ -539,11 +539,14 @@ export default ({ strapi }: { strapi: any }) => {
       messageId: string;
       shipId: string;
       timestamp: string;
-      operation: 'create' | 'update' | 'delete';
+      operation: string;
       contentType: string;
       contentId: string;
       version: number;
       data: any;
+      locale?: string | null;
+      fileRecords?: any[];
+      [key: string]: any;
     }): Promise<boolean> {
       const config = strapi.config.get('plugin::offline-sync', {});
 

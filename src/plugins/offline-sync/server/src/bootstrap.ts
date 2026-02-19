@@ -1029,7 +1029,7 @@ export default ({ strapi }: { strapi: any }) => {
           const kafkaProducer = strapi.plugin('offline-sync').service('kafka-producer');
           const masterSyncQueue = strapi.plugin('offline-sync').service('master-sync-queue');
 
-          const safeData = operation !== 'delete' ? stripSensitiveData(syncData) : null;
+          let safeData = operation !== 'delete' ? stripSensitiveData(syncData) : null;
 
           // Log this edit as coming from Master admin (for conflict detection)
           await masterSyncQueue.logEdit({
@@ -1040,17 +1040,28 @@ export default ({ strapi }: { strapi: any }) => {
             locale,
           });
 
-          // Extract file records for media relations so replicas can create upload.file entries
+          // Extract file records so replicas can create plugin::upload.file entries
           let fileRecords: any[] = [];
           if (safeData && operation !== 'delete') {
             try {
               const mediaSync = strapi.plugin('offline-sync').service('media-sync');
-              if (mediaSync.isEnabled()) {
-                const fileIds = mediaSync.extractFileIds(safeData);
-                if (fileIds.length > 0) {
-                  fileRecords = await mediaSync.getFileRecords(fileIds);
-                  strapi.log.debug(`[Sync] Including ${fileRecords.length} file records for ships`);
+              // Fetch full document with populated relations for file references
+              try {
+                const fullDoc = await strapi.documents(uid).findOne({
+                  documentId,
+                  locale: locale || undefined,
+                  populate: '*',
+                });
+                if (fullDoc) {
+                  safeData = stripSensitiveData(fullDoc);
                 }
+              } catch {
+                // Use original safeData if populate fails
+              }
+              const fileIds = mediaSync.extractFileIds(safeData);
+              if (fileIds.length > 0) {
+                fileRecords = await mediaSync.getFileRecords(fileIds);
+                strapi.log.info(`[Sync] 📎 Including ${fileRecords.length} file records for ships`);
               }
             } catch (fileErr: any) {
               strapi.log.debug(`[Sync] File record extraction skipped: ${fileErr.message}`);
