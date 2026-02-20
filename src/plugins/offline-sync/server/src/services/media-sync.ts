@@ -251,15 +251,10 @@ export default ({ strapi }: { strapi: any }) => {
   };
 
   /**
-   * Convert an OSS object name to a MinIO object name by stripping the upload path prefix
+   * Convert an OSS object name to a MinIO object name.
+   * Preserves the full path including the uploads/ prefix so MinIO mirrors the OSS structure.
    */
   const ossPathToMinioPath = (ossObjectName: string): string => {
-    const config = getMediaConfig();
-    if (!config) return ossObjectName;
-    const uploadPath = config.oss.uploadPath?.replace(/\/$/, '');
-    if (uploadPath && ossObjectName.startsWith(uploadPath + '/')) {
-      return ossObjectName.substring(uploadPath.length + 1);
-    }
     return ossObjectName;
   };
 
@@ -276,7 +271,6 @@ export default ({ strapi }: { strapi: any }) => {
     const INITIAL_RETRY_DELAY = 1000; // 1 second
     const MAX_RETRY_DELAY = 30000; // 30 seconds
 
-    // OSS uses uploadPath prefix (e.g. uploads/file.jpg), MinIO stores at root (file.jpg)
     const minioObjectName = ossPathToMinioPath(objectName);
 
     try {
@@ -286,7 +280,6 @@ export default ({ strapi }: { strapi: any }) => {
       // Get file stats for size
       const stat = await ossClient.statObject(config.oss.bucket, objectName);
 
-      // Upload to MinIO (without upload prefix)
       await minioClient.putObject(
         config.minio.bucket,
         minioObjectName,
@@ -430,7 +423,6 @@ export default ({ strapi }: { strapi: any }) => {
             const filePromises = batch.map(async (obj) => {
               processed++;
 
-              // Check MinIO using path without upload prefix
               const exists = await fileExistsInMinio(ossPathToMinioPath(obj.name));
               if (exists) {
                 syncStats.filesSkipped++;
@@ -819,7 +811,6 @@ export default ({ strapi }: { strapi: any }) => {
           }
 
           try {
-            // Check MinIO using path without upload prefix
             const exists = await fileExistsInMinio(ossPathToMinioPath(objectPath));
             if (exists) {
               result.skipped++;
@@ -1310,15 +1301,17 @@ export default ({ strapi }: { strapi: any }) => {
       const ossBaseUrl = config.oss.baseUrl.replace(/\/$/, '');
 
       if (minioUrl.includes(minioBaseUrl)) {
-        // Get the path after MinIO base URL
         const path = minioUrl.replace(minioBaseUrl, '').replace(/^\//, '');
 
-        // If OSS uses uploadPath, prepend it
-        const ossPath = config.oss.uploadPath
-          ? `${config.oss.uploadPath.replace(/\/$/, '')}/${path}`
-          : path;
+        if (config.oss.uploadPath) {
+          const uploadPrefix = config.oss.uploadPath.replace(/\/$/, '');
+          if (path.startsWith(uploadPrefix + '/')) {
+            return `${ossBaseUrl}/${path}`;
+          }
+          return `${ossBaseUrl}/${uploadPrefix}/${path}`;
+        }
 
-        return `${ossBaseUrl}/${ossPath}`;
+        return `${ossBaseUrl}/${path}`;
       }
 
       return minioUrl;
@@ -1337,16 +1330,7 @@ export default ({ strapi }: { strapi: any }) => {
       const minioBaseUrl = config.minio.baseUrl.replace(/\/$/, '');
 
       if (ossUrl.includes(ossBaseUrl)) {
-        let path = ossUrl.replace(ossBaseUrl, '').replace(/^\//, '');
-
-        // Remove uploadPath prefix if present
-        if (config.oss.uploadPath) {
-          const uploadPrefix = config.oss.uploadPath.replace(/\/$/, '') + '/';
-          if (path.startsWith(uploadPrefix)) {
-            path = path.substring(uploadPrefix.length);
-          }
-        }
-
+        const path = ossUrl.replace(ossBaseUrl, '').replace(/^\//, '');
         return `${minioBaseUrl}/${path}`;
       }
 
