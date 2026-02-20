@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * Offline Sync Plugin Bootstrap
  * Production-ready initialization for master/replica sync system
@@ -212,15 +214,23 @@ async function retryConnection(
           // Wait before retry with exponential backoff
           // Use a cancellable promise to support shutdown
           await new Promise<void>((resolve, reject) => {
+            let checkInterval: NodeJS.Timeout | null = null;
+
             timeoutId = setTimeout(() => {
               timeoutId = null;
+              if (checkInterval) {
+                clearInterval(checkInterval);
+                checkInterval = null;
+              }
               resolve();
             }, delay);
 
-            // Check for shutdown periodically
-            const checkInterval = setInterval(() => {
+            checkInterval = setInterval(() => {
               if ((strapi as any)?._isShuttingDown) {
-                clearInterval(checkInterval);
+                if (checkInterval) {
+                  clearInterval(checkInterval);
+                  checkInterval = null;
+                }
                 if (timeoutId) {
                   clearTimeout(timeoutId);
                   timeoutId = null;
@@ -229,7 +239,6 @@ async function retryConnection(
               }
             }, 1000);
           }).catch(() => {
-            // Shutdown detected - abort
             throw new Error('Shutdown in progress');
           });
 
@@ -248,15 +257,12 @@ async function retryConnection(
           // Only schedule background retry if not already a background retry and not shutting down
           if (!isBackgroundRetry && !(strapi as any)?._isShuttingDown) {
             strapi.log.info(`[OfflineSync] Will continue retrying ${serviceName} in background...`);
-            // Use setTimeout with stored ID for potential cleanup (though unlikely to be needed)
-            const bgRetryTimeout = setTimeout(() => {
+            setTimeout(() => {
+              if ((strapi as any)?._isShuttingDown) return;
               retryConnection(connectFn, serviceName, strapi, 5, 30000, true).catch(() => {
-                // Background retries also failed - log but don't throw
                 strapi.log.error(`[OfflineSync] Background retries exhausted for ${serviceName}`);
               });
             }, 30000);
-            // Store timeout ID (could be added to cleanup if needed)
-            (bgRetryTimeout as any).__backgroundRetry = true;
           }
 
           // Throw error to allow caller to handle
@@ -350,7 +356,7 @@ export default ({ strapi }: { strapi: any }) => {
     const mediaSync = strapi.plugin('offline-sync').service('media-sync');
     const mediaSyncEnabled = mediaSync.isEnabled();
     strapi.log.info(`[OfflineSync] Media sync check: enabled=${mediaSyncEnabled}, SYNC_MODE=${pluginConfig.mode}`);
-    
+
     if (mediaSyncEnabled) {
       strapi.log.info('[OfflineSync] 🖼️ Media sync enabled - initializing...');
       mediaSync.initialize().then(() => {
@@ -625,7 +631,7 @@ export default ({ strapi }: { strapi: any }) => {
     // MASTER MODE
     // Using Strapi content types - no database timing issues
 
-    let kafkaConsumer: ReturnType<typeof strapi.plugin> | null = null;
+    let kafkaConsumer: any = null;
     let cleanupIntervalId: NodeJS.Timeout | null = null;
     let masterAutoPushIntervalId: NodeJS.Timeout | null = null;
     let masterAutoPushInitialTimeout: NodeJS.Timeout | null = null;

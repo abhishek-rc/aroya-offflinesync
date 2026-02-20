@@ -958,13 +958,16 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
 
                 if (localMapping?.replicaDocumentId) {
                   (strapi as any)._offlineSyncFromMaster = true;
-                  await strapi.documents(contentType).update({
-                    documentId: localMapping.replicaDocumentId,
-                    data: this.cleanSyncData(resolvedData),
-                    status: 'published',
-                  });
-                  (strapi as any)._offlineSyncFromMaster = false;
-                  strapi.log.info(`[Sync] Local content updated with master's version`);
+                  try {
+                    await strapi.documents(contentType).update({
+                      documentId: localMapping.replicaDocumentId,
+                      data: this.cleanSyncData(resolvedData),
+                      status: 'published',
+                    });
+                    strapi.log.info(`[Sync] Local content updated with master's version`);
+                  } finally {
+                    (strapi as any)._offlineSyncFromMaster = false;
+                  }
                 }
               } catch (updateError: any) {
                 strapi.log.debug(`[Sync] Could not update local content: ${updateError.message}`);
@@ -995,13 +998,16 @@ export default ({ strapi: strapiInstance }: { strapi: any }) => {
 
                 if (localMapping?.replicaDocumentId) {
                   (strapi as any)._offlineSyncFromMaster = true;
-                  await strapi.documents(contentType).update({
-                    documentId: localMapping.replicaDocumentId,
-                    data: this.cleanSyncData(resolvedData),
-                    status: 'published',
-                  });
-                  (strapi as any)._offlineSyncFromMaster = false;
-                  strapi.log.info(`[Sync] Local content updated with merged version`);
+                  try {
+                    await strapi.documents(contentType).update({
+                      documentId: localMapping.replicaDocumentId,
+                      data: this.cleanSyncData(resolvedData),
+                      status: 'published',
+                    });
+                    strapi.log.info(`[Sync] Local content updated with merged version`);
+                  } finally {
+                    (strapi as any)._offlineSyncFromMaster = false;
+                  }
                 }
               } catch (updateError: any) {
                 strapi.log.debug(`[Sync] Could not update local content: ${updateError.message}`);
