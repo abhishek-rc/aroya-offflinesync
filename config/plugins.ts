@@ -100,6 +100,7 @@ export default ({ env }) => ({
           ? {
               // MinIO (S3-compatible) - works offline on ship
               baseUrl: env('MINIO_BASE_URL', 'http://localhost:9000/media'),
+              rootPath: 'uploads',
               s3Options: {
                 endpoint: `http://${env('MINIO_ENDPOINT', 'localhost')}:${env.int('MINIO_PORT', 9000)}`,
                 credentials: {
