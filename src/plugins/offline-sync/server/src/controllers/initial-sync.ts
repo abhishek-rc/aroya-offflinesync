@@ -2,6 +2,7 @@
  * Initial Sync Controller
  * API endpoints to trigger initial sync for production data migration
  */
+declare const strapi: any;
 
 export default {
   /**
@@ -41,12 +42,36 @@ export default {
    */
   async status(ctx: any) {
     const config = strapi.config.get('plugin::offline-sync', {});
-    
+    const initialSync = strapi.plugin('offline-sync').service('initial-sync');
+
+    const discoveredTypes = initialSync.discoverApiContentTypes() as string[];
+    const configuredTypes = (config.contentTypes || []) as string[];
+    const typesToSync = configuredTypes.length > 0 ? configuredTypes : discoveredTypes;
+
+    const contentTypeSummary: Array<{ uid: string; kind: string; entries: number }> = [];
+    let totalEntries = 0;
+
+    for (const uid of typesToSync) {
+      try {
+        const model = strapi.contentTypes[uid];
+        const kind: string = model?.kind || 'unknown';
+        if (kind === 'singleType') continue;
+
+        const count: number = await strapi.documents(uid as any).count({});
+        contentTypeSummary.push({ uid, kind, entries: count });
+        totalEntries += count;
+      } catch {
+        contentTypeSummary.push({ uid, kind: 'error', entries: 0 });
+      }
+    }
+
     ctx.body = {
       mode: config.mode,
       shipId: config.shipId,
-      contentTypes: config.contentTypes || [],
-      instructions: config.mode === 'replica' 
+      totalContentTypes: contentTypeSummary.length,
+      totalEntries,
+      contentTypes: contentTypeSummary,
+      instructions: config.mode === 'replica'
         ? [
             '1. Make sure master Strapi is running and accessible',
             '2. Create an API token on master with read access to content types',
